@@ -1,5 +1,6 @@
 package com.example.in_proj.services;
 
+import com.example.in_proj.dto.AuthDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.Order;
 import com.example.in_proj.entity.User;
@@ -37,6 +38,23 @@ public class UserService {
         return userRepository.findAll().stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    public User getByEmail(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user != null) {
+            user.setRecentActivity(new Date(System.currentTimeMillis()));
+            userRepository.save(user);
+        }
+        return user;
+    }
+
+    public boolean authenticate(AuthDTO loginDTO) {
+        User user = userRepository.findByEmail(loginDTO.getEmail());
+        if (user != null) {
+            return passwordEncoder.matches(loginDTO.getPassword(), user.getPassword());
+        }
+        return false;
     }
 
     public List<UserDTO> getInactiveUsers() {

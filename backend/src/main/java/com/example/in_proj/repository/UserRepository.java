@@ -12,4 +12,6 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.recentActivity < :date")
     List<User> findByRecentActivityBefore(Date date);
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    User findByEmail(String email);
 }

@@ -54,5 +54,13 @@ public class PlaneController {
             return ResponseEntity.notFound().build();
         return ResponseEntity.ok(updatedPlaneData);
     }
-}
 
+    @PutMapping("/status/{id}")//
+    public ResponseEntity<PlaneDTO> togglePlaneStatus(@PathVariable Long id) {
+        PlaneDTO updatedPlane = planeService.statusPlane(id);
+        if (updatedPlane == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updatedPlane);
+    }
+}

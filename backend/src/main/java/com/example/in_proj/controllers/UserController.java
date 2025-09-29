@@ -1,5 +1,7 @@
 package com.example.in_proj.controllers;
 
+import com.example.in_proj.auth.JwtUtil;
+import com.example.in_proj.dto.AuthDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.User;
 import com.example.in_proj.services.UserService;
@@ -54,6 +56,17 @@ public class UserController {
         if (createdUser == null)
             return ResponseEntity.notFound().build();
         return ResponseEntity.ok(createdUser);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody AuthDTO authDTO) {
+        if (userService.authenticate(authDTO)) {
+            User user = userService.getByEmail(authDTO.getEmail());
+            String token = JwtUtil.generate(user.getEmail(), user.getRole(), user.getName(), Math.toIntExact(user.getId()));
+            return ResponseEntity.ok("{\"token\":\"" + token + "\"}");
+        } else {
+            return ResponseEntity.status(401).body("{\"error\":\"Invalid email or password\"}");
+        }
     }
 
     @PutMapping("/{id}")

@@ -1,8 +1,12 @@
 package com.example.in_proj.services;
 
 import com.example.in_proj.dto.PlaneDTO;
+import com.example.in_proj.entity.Bonus;
+import com.example.in_proj.entity.Order;
 import com.example.in_proj.entity.Plane;
 import com.example.in_proj.mapper.PlaneMapper;
+import com.example.in_proj.repository.BonusRepository;
+import com.example.in_proj.repository.OrderRepository;
 import com.example.in_proj.repository.PlaneRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,8 @@ import java.util.stream.Collectors;
 public class PlaneService {
 
     private final PlaneRepository planeRepository;
+    private final OrderRepository orderRepository;
+    private final BonusRepository bonusRepository;
     private final PlaneMapper mapper = PlaneMapper.INSTANCE;
 
     public PlaneDTO getPlane(Long id) {
@@ -108,6 +114,53 @@ public class PlaneService {
                 existingPlane.setOccupied_seats(planeDTO.getOccupied_seats());
             }
             planeRepository.save(existingPlane);
+            return mapper.toDTO(existingPlane);
+        }).orElse(null);
+    }
+
+    public PlaneDTO statusPlane(Long id) {
+        return planeRepository.findById(id).map(existingPlane -> {
+            // Змінюємо статус літака
+            existingPlane.setStatus(false);
+            planeRepository.save(existingPlane);
+
+            // Отримуємо список замовлень по літаку
+            List<Order> orders = orderRepository.findByPlane_id(id);
+
+            for (Order order : orders) {
+                // Якщо замовлення зі статусом "paid"
+                if ("paid".equals(order.getPayment_status())) {
+                    Long userId = order.getClient_id();
+                    Long planeId = order.getPlane_id();
+
+                    // Знаходимо літак за planeId
+                    Plane plane = planeRepository.findById(planeId)
+                            .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + planeId));
+
+                    // Отримуємо avia_id із літака
+                    Long aviaId = plane.getAvia_id();
+
+                    // Розраховуємо бонус
+                    long bonusAmount = order.getTotal_price() / 2;
+
+                    // Знаходимо або створюємо запис у Bonus
+                    Bonus bonus = bonusRepository.findByUserIdAndAviaId(userId, aviaId);
+                    if (bonus == null) {
+                        bonus = new Bonus();
+                        bonus.setClient_id(userId);
+                        bonus.setAvia_id(aviaId);
+                        bonus.setBonus_count(bonusAmount);
+                    } else {
+                        bonus.setBonus_count(bonus.getBonus_count() + bonusAmount);
+                    }
+                    bonusRepository.save(bonus);
+                }
+
+                // Змінюємо статус замовлення на "canceled"
+                order.setPayment_status("canceled");
+                orderRepository.save(order);
+            }
+
             return mapper.toDTO(existingPlane);
         }).orElse(null);
     }
