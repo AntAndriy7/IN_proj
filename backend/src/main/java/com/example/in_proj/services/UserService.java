@@ -84,14 +84,29 @@ public class UserService {
     }
 
     public UserDTO createUser(UserDTO userDTO) {
+        if (userRepository.findByEmail(userDTO.getEmail()) != null) {
+            throw new IllegalArgumentException("A user with this email address already exists!");
+        }
+
+        switch (userDTO.getRole()) {
+            case "CLIENT":
+                userDTO.setRole("CLIENT");
+                break;
+            case "AVIA-temp":
+                userDTO.setRole("AVIA-temp");
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid role!");
+        }
+
         String encodedPassword = passwordEncoder.encode(userDTO.getPassword());
         userDTO.setPassword(encodedPassword);
 
         userDTO.setRecentActivity(new Date(System.currentTimeMillis()));
 
         User user = mapper.toEntity(userDTO);
-
         user = userRepository.save(user);
+
         return mapper.toDTO(user);
     }
 

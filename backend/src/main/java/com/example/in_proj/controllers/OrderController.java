@@ -22,8 +22,10 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO orderDTO, @RequestParam List<String> tickets) {
-        OrderDTO newOrder = orderService.addOrder(orderDTO, tickets);
+    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO orderDTO,
+                                                @RequestParam List<String> tickets,
+                                                @RequestParam(required = false) Long usedBonuses) {
+        OrderDTO newOrder = orderService.addOrder(orderDTO, tickets, usedBonuses);
         return ResponseEntity.ok(newOrder);
     }
 

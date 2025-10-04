@@ -2,6 +2,7 @@ package com.example.in_proj.controllers;
 
 import com.example.in_proj.dto.PlaneDTO;
 import com.example.in_proj.services.PlaneService;
+import com.example.in_proj.auth.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +17,11 @@ public class PlaneController {
     private final PlaneService planeService;
 
     @GetMapping
-    public ResponseEntity<List<PlaneDTO>> getAllPlanes() {
-        List<PlaneDTO> planes = planeService.getAllPlanes();
-        return ResponseEntity.ok(planes);
+    public ResponseEntity<List<List<?>>> getAllPlanes() {
+        List<List<?>> result = planeService.getAllPlanes();
+        if (result == null)
+            return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")
@@ -30,9 +33,9 @@ public class PlaneController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<List<PlaneDTO>> getPlanesByStatus() {
-        List<PlaneDTO> planes = planeService.getPlanesByStatus();
-        return planes.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(planes);
+    public ResponseEntity<List<List<?>>> getPlanesWithUsers() {
+        List<List<?>> result = planeService.getPlanesByStatus();
+        return result.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(result);
     }
 
     @GetMapping("/avia/{aviaId}")
@@ -42,9 +45,15 @@ public class PlaneController {
     }
 
     @PostMapping
-    public ResponseEntity<PlaneDTO> createPlane(@RequestBody PlaneDTO planeDTO) {
-        PlaneDTO createdPlane = planeService.createPlane(planeDTO);
-        return ResponseEntity.ok(createdPlane);
+    public ResponseEntity<PlaneDTO> createPlane(@RequestBody PlaneDTO planeDTO,
+                                                @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            PlaneDTO createdPlane = planeService.createPlane(planeDTO, JwtUtil.getId(token));
+            return ResponseEntity.ok(createdPlane);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(403).body(null);
+        }
     }
 
     @PutMapping("/{id}")
@@ -55,7 +64,7 @@ public class PlaneController {
         return ResponseEntity.ok(updatedPlaneData);
     }
 
-    @PutMapping("/status/{id}")//
+    @PutMapping("/status/{id}")
     public ResponseEntity<PlaneDTO> togglePlaneStatus(@PathVariable Long id) {
         PlaneDTO updatedPlane = planeService.statusPlane(id);
         if (updatedPlane == null) {

@@ -41,4 +41,20 @@ public class JwtUtil {
             return null;
         }
     }
+
+    public static Long getId(String token) {
+        try {
+            return JWT.decode(token).getClaim("id").asLong();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static String getEmail(String token) {
+        try {
+            return JWT.decode(token).getSubject();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

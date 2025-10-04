@@ -51,11 +51,13 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
-        UserDTO createdUser = userService.createUser(userDTO);
-        if (createdUser == null)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(createdUser);
+    public ResponseEntity<?> createUser(@RequestBody UserDTO userDTO) {
+        try {
+            userService.createUser(userDTO);
+            return ResponseEntity.ok("User successfully registered!");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/login")

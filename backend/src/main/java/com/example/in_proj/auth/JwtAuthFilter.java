@@ -1,54 +1,46 @@
 package com.example.in_proj.auth;
 
-import jakarta.servlet.*;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
-public class JwtAuthFilter implements Filter {
+public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
-    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
-            throws IOException, ServletException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-        HttpServletRequest request = (HttpServletRequest) req;
-        HttpServletResponse response = (HttpServletResponse) res;
+        String authHeader = request.getHeader("Authorization");
 
-        String path = request.getRequestURI();
-        String method = request.getMethod();
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
 
-        // Пропускаємо api
-        if (path.matches("/api/user/login") ||
-                ("/api/user".equals(path) && ("GET".equals(method) || "POST".equals(method))) ||
-                ("/api/plane".equals(path) && "GET".equals(method)) ||
-                ("/api/plane/status".equals(path) && "GET".equals(method))) {
-            chain.doFilter(req, res);
-            return;
+            if (JwtUtil.validate(token)) {
+                String role = JwtUtil.getRole(token);
+                System.out.printf("role: %s\n", role);
+                String email = JwtUtil.getEmail(token);
+
+                if (role != null && email != null) {
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+                    System.out.println("authority" + authority);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(email, null, Collections.singletonList(authority));
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
         }
 
-        String auth = request.getHeader("Authorization");
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Missing token");
-            return;
-        }
-
-        String token = auth.substring(7);
-        if (!JwtUtil.validate(token)) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
-            return;
-        }
-
-        String role = JwtUtil.getRole(token);
-        System.out.println(role);
-        if (path.startsWith("/api/plane") && ("POST".equals(method) || "PUT".equals(method)) && !("ADMIN".equals(role) || "AVIA".equals(role))) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only admin and avia company can POST /api/plane");
-            System.out.println(role);
-            return;
-        }
-
-        chain.doFilter(req, res);
+        filterChain.doFilter(request, response);
     }
 }
