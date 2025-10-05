@@ -15,12 +15,12 @@ public class BonusController {
     private final BonusService bonusService;
 
     @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<BonusDTO>> getAllBonusesByClient(@PathVariable Long clientId) {
-        List<BonusDTO> bonuses = bonusService.getAllBonusesByClient(clientId);
-        if (bonuses.isEmpty()) {
+    public ResponseEntity<List<List<?>>> getAllBonusesByClient(@PathVariable Long clientId) {
+        List<List<?>> result = bonusService.getAllBonusesWithAvia(clientId);
+        if (result == null || result.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(bonuses);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/client/{clientId}/avia/{aviaId}")
@@ -33,16 +33,9 @@ public class BonusController {
         return ResponseEntity.ok(bonus);
     }
 
-    @PostMapping
-    public ResponseEntity<BonusDTO> createBonus(@RequestBody BonusDTO bonusDTO) {
-        BonusDTO createdBonus = bonusService.createBonus(bonusDTO);
-        return ResponseEntity.ok(createdBonus);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<BonusDTO> updateBonus(@PathVariable Long id, @RequestBody BonusDTO bonusDTO) {
-        BonusDTO updatedBonus = bonusService.updateBonus(id, bonusDTO);
-        System.out.println(updatedBonus);
+    @PutMapping
+    public ResponseEntity<BonusDTO> upsertBonus(@RequestBody BonusDTO bonusDTO) {
+        BonusDTO updatedBonus = bonusService.upsertBonus(bonusDTO);
         if (updatedBonus == null) {
             return ResponseEntity.notFound().build();
         }

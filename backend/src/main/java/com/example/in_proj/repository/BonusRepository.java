@@ -13,4 +13,6 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
     List<Bonus> findAllByClientId(Long clientId);
     @Query("SELECT b FROM Bonus b WHERE b.client_id = :userId AND b.avia_id = :aviaId")
     Bonus findByUserIdAndAviaId(Long userId, Long aviaId);
+    @Query("SELECT b FROM Bonus b WHERE b.client_id IN :userIds AND b.avia_id = :aviaId")
+    List<Bonus> findByUserIdsAndAviaId(List<Long> userIds, Long aviaId);
 }

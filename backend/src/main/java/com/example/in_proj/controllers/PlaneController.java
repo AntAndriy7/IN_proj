@@ -52,7 +52,7 @@ public class PlaneController {
             PlaneDTO createdPlane = planeService.createPlane(planeDTO, JwtUtil.getId(token));
             return ResponseEntity.ok(createdPlane);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(403).body(null);
+            return ResponseEntity.badRequest().body(null);
         }
     }
 

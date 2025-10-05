@@ -33,7 +33,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user").permitAll()
 
-                        .requestMatchers("/api/plane").hasRole("ADMIN")
+                        .requestMatchers("/api/plane").hasAnyRole("ADMIN", "AVIA")
+                        .requestMatchers("/api/plane/avia/*", "/api/user/plane/*", "/api/bonus").hasRole("AVIA")
                         .requestMatchers("/api/user/*", "/api/bonus/client/**").hasRole("CLIENT")
 
                         .requestMatchers("/api/order/client/*", "/api/order/*"/*PUT*/, "/api/ticket/order/*", "/api/plane/*").hasRole("CLIENT") //test order (paid -> canceled)

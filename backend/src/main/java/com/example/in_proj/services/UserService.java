@@ -1,11 +1,16 @@
 package com.example.in_proj.services;
 
 import com.example.in_proj.dto.AuthDTO;
+import com.example.in_proj.dto.BonusDTO;
 import com.example.in_proj.dto.UserDTO;
+import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
+import com.example.in_proj.entity.Plane;
 import com.example.in_proj.entity.User;
 import com.example.in_proj.mapper.UserMapper;
+import com.example.in_proj.repository.BonusRepository;
 import com.example.in_proj.repository.OrderRepository;
+import com.example.in_proj.repository.PlaneRepository;
 import com.example.in_proj.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,8 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.sql.Date;
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,7 +30,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final PlaneRepository planeRepository;
+    private final BonusRepository bonusRepository;
     private final UserMapper mapper = UserMapper.INSTANCE;
+
+    public UserDTO getUserController(Long id, Long userIdFromToken) {
+        if (!Objects.equals(id, userIdFromToken)) {
+            throw new IllegalArgumentException("User ID does not match");
+        }
+
+        return userRepository.findById(id)
+                .map(mapper::toDTO)
+                .orElse(null);
+    }
 
     public UserDTO getUser(Long id) {
         return userRepository.findById(id)
@@ -69,7 +85,7 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public List<User> getUsersByPlaneId(Long planeId) {
+    public List<Map<String, Object>> getUsersByPlaneId(Long planeId) {
         // Знайдемо всі замовлення для заданого plane_id
         List<Order> orders = orderRepository.findByPlane_id(planeId);
 
@@ -80,7 +96,30 @@ public class UserService {
                 .collect(Collectors.toList());
 
         // Знайдемо користувачів за user_id
-        return userRepository.findAllById(userIds);
+        List<User> users = userRepository.findAllById(userIds);
+
+        // Отримаємо рейс
+        Plane plane = planeRepository.findById(planeId).orElse(null);
+        if (plane == null) {
+            return List.of();
+        }
+
+        Long aviaId = plane.getAvia_id();
+
+        // Завантажуємо бонуси
+        List<Bonus> bonuses = bonusRepository.findByUserIdsAndAviaId(userIds, aviaId);
+
+        // Переводимо в map
+        Map<Long, Long> bonusMap = bonuses.stream()
+                .collect(Collectors.toMap(Bonus::getClient_id, Bonus::getBonus_count));
+
+        // Формуємо результат
+        return users.stream().map(user -> {
+            Map<String, Object> result = new HashMap<>();
+            result.put("user", user);
+            result.put("bonus_count", bonusMap.getOrDefault(user.getId(), 0L));
+            return result;
+        }).collect(Collectors.toList());
     }
 
     public UserDTO createUser(UserDTO userDTO) {
@@ -110,7 +149,11 @@ public class UserService {
         return mapper.toDTO(user);
     }
 
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
+    public UserDTO updateUser(Long id, UserDTO userDTO, Long userIdFromToken) {
+        if (!Objects.equals(id, userIdFromToken)) {
+            throw new IllegalArgumentException("User ID does not match");
+        }
+
         return userRepository.findById(id).map(existingUser -> {
             if (userDTO.getName() != null) {
                 existingUser.setName(userDTO.getName());
@@ -133,7 +176,11 @@ public class UserService {
         }).orElse(null);
     }
 
-    public boolean deleteUser(Long id) {
+    public boolean deleteUser(Long id, Long userIdFromToken, String roleFromToken) {
+        if (!Objects.equals(id, userIdFromToken) && !Objects.equals(roleFromToken, "ADMIN")) {
+            throw new IllegalArgumentException("User ID does not match");
+        }
+
         if (userRepository.existsById(id)) {
             userRepository.deleteById(id);
             return true;

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping(value = "/api/user")
@@ -25,16 +26,22 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUser(@PathVariable Long id) {
-        UserDTO user = userService.getUser(id);
-        if (user == null)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(user);
+    public ResponseEntity<UserDTO> getUser(@PathVariable Long id,
+                                           @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            UserDTO user = userService.getUserController(id, JwtUtil.getId(token));
+            if (user == null)
+                return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
     @GetMapping("/plane/{planeId}")
-    public ResponseEntity<List<User>> getUsersByPlaneId(@PathVariable Long planeId) {
-        List<User> users = userService.getUsersByPlaneId(planeId);
+    public ResponseEntity<List<Map<String, Object>>> getUsersByPlaneId(@PathVariable Long planeId) {
+        List<Map<String, Object>> users = userService.getUsersByPlaneId(planeId);
         if (users.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -72,18 +79,30 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
-        UserDTO updatedUser = userService.updateUser(id, userDTO);
-        if (updatedUser == null)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO,
+                                              @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            UserDTO updatedUser = userService.updateUser(id, userDTO, JwtUtil.getId(token));
+            if (updatedUser == null)
+                return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        boolean deleted = userService.deleteUser(id);
-        if (!deleted)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id,
+                                           @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            boolean deleted = userService.deleteUser(id, JwtUtil.getId(token), JwtUtil.getRole(token));
+            if (!deleted)
+                return ResponseEntity.notFound().build();
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 }

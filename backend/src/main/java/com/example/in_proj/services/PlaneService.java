@@ -126,9 +126,9 @@ public class PlaneService {
         LocalDateTime arrivalDateTime = LocalDateTime.of(arrivalDate, arrivalTime);
         LocalDateTime now = LocalDateTime.now();
 
-        LocalDateTime maxAllowedDeparture = now.plusHours(24);
-        if (departureDateTime.isAfter(maxAllowedDeparture)) {
-            throw new IllegalArgumentException("Departure date/time cannot be later than 24 hours from now");
+        LocalDateTime minAllowedDeparture = now.plusHours(24);
+        if (departureDateTime.isBefore(minAllowedDeparture)) {
+            throw new IllegalArgumentException("Departure date/time cannot be earlier than 24 hours from now");
         }
 
         if (arrivalDateTime.isBefore(departureDateTime)) {
