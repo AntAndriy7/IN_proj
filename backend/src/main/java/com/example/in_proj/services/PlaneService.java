@@ -1,9 +1,11 @@
 package com.example.in_proj.services;
 
 import com.example.in_proj.dto.PlaneDTO;
+import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
 import com.example.in_proj.entity.Plane;
 import com.example.in_proj.mapper.PlaneMapper;
+import com.example.in_proj.repository.BonusRepository;
 import com.example.in_proj.repository.OrderRepository;
 import com.example.in_proj.repository.PlaneRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +22,9 @@ import java.util.stream.Collectors;
 public class PlaneService {
 
     private final UserService userService;
-    private final OrderService orderService;
     private final PlaneRepository planeRepository;
     private final OrderRepository orderRepository;
+    private final BonusRepository bonusRepository;
     private final PlaneMapper mapper = PlaneMapper.INSTANCE;
 
     public PlaneDTO getPlane(Long id) {
@@ -31,28 +33,44 @@ public class PlaneService {
                 .orElse(null);
     }
 
-    public List<List<?>> getAllPlanes() {
-        checkAndUpdatePlaneStatuses();
+    public List<PlaneDTO> getAllPlanes(Set<Long> planeIds) {
+        List<Plane> planes;
 
-        List<Plane> planes = planeRepository.findAll();
-        List<PlaneDTO> planeDTOs = planes.stream()
+        if (planeIds == null || planeIds.isEmpty()) {
+            planes = planeRepository.findAll(); // повертаємо всі літаки
+        } else {
+            planes = planeRepository.findAllById(planeIds); // літаки за ID
+        }
+
+        return planes.stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
+    }
 
-        Set<Long> aviaIds = planes.stream()
-                .map(Plane::getAvia_id)
-                .collect(Collectors.toSet());
-
-        List<Map<String, Object>> users = aviaIds.stream()
-                .map(userService::getUser)
-                .filter(Objects::nonNull)
-                .map(user -> {
+    public List<Map<String, Object>> getAvia(Set<Long> aviaIds) {
+        return aviaIds.stream()
+                .map(userService::getUser)       // отримуємо користувача по aviaId
+                .filter(Objects::nonNull)        // відкидаємо null
+                .map(user -> {                   // мінімальні дані
                     Map<String, Object> minimalUser = new HashMap<>();
                     minimalUser.put("id", user.getId());
                     minimalUser.put("name", user.getName());
                     return minimalUser;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public List<List<?>> getAllPlanesCombined() {
+        checkAndUpdatePlaneStatuses();
+
+        List<Plane> planes = planeRepository.findAll();
+        List<PlaneDTO> planeDTOs = getAllPlanes(null);
+
+        Set<Long> aviaIds = planes.stream()
+                .map(Plane::getAvia_id)
+                .collect(Collectors.toSet());
+
+        List<Map<String, Object>> users = getAvia(aviaIds);
 
         List<List<?>> combined = new ArrayList<>();
         combined.add(planeDTOs);
@@ -199,7 +217,37 @@ public class PlaneService {
             List<Order> orders = orderRepository.findByPlane_id(id);
 
             for (Order order : orders) {
-                orderService.processOrder(order, 2);
+                // Якщо замовлення зі статусом "paid"
+                if ("paid".equals(order.getPayment_status())) {
+                    Long userId = order.getClient_id();
+                    Long planeId = order.getPlane_id();
+
+                    // Знаходимо літак за planeId
+                    Plane plane = planeRepository.findById(planeId)
+                            .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + planeId));
+
+                    // Отримуємо avia_id із літака
+                    Long aviaId = plane.getAvia_id();
+
+                    // Розраховуємо бонус
+                    long bonusAmount = order.getTotal_price();
+
+                    // Знаходимо або створюємо запис у Bonus
+                    Bonus bonus = bonusRepository.findByUserIdAndAviaId(userId, aviaId);
+                    if (bonus == null) {
+                        bonus = new Bonus();
+                        bonus.setClient_id(userId);
+                        bonus.setAvia_id(aviaId);
+                        bonus.setBonus_count(bonusAmount);
+                    } else {
+                        bonus.setBonus_count(bonus.getBonus_count() + bonusAmount);
+                    }
+                    bonusRepository.save(bonus);
+                }
+
+                // Змінюємо статус замовлення на "canceled"
+                order.setPayment_status("canceled");
+                orderRepository.save(order);
             }
 
             return mapper.toDTO(existingPlane);

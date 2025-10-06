@@ -16,9 +16,12 @@ public class OrderController {
     private final OrderService orderService;
 
     @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<OrderDTO>> getOrdersByClientId(@PathVariable Long clientId) {
-        List<OrderDTO> orders = orderService.getOrdersByClientId(clientId);
-        return orders.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(orders);
+    public ResponseEntity<List<List<?>>> getOrdersByClientId(@PathVariable Long clientId) {
+        List<List<?>> combined = orderService.getOrdersByClientId(clientId);
+        if (combined.isEmpty() || combined.get(0).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(combined);
     }
 
     @PostMapping

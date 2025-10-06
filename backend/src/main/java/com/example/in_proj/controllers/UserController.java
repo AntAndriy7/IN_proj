@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping(value = "/api/user")
@@ -30,9 +31,14 @@ public class UserController {
                                            @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            UserDTO user = userService.getUserController(id, JwtUtil.getId(token));
+            if (!Objects.equals(id, JwtUtil.getId(token)))
+                throw new IllegalArgumentException("User ID does not match");
+
+            UserDTO user = userService.getUser(id);
+
             if (user == null)
                 return ResponseEntity.notFound().build();
+
             return ResponseEntity.ok(user);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(null);
@@ -79,14 +85,26 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO,
-                                              @RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO,
+                                        @RequestHeader("Authorization") String authHeader) {
+        String oldToken = authHeader.replace("Bearer ", "");
         try {
-            UserDTO updatedUser = userService.updateUser(id, userDTO, JwtUtil.getId(token));
+            if (!Objects.equals(id, JwtUtil.getId(oldToken)))
+                throw new IllegalArgumentException("User ID does not match");
+
+            UserDTO updatedUser = userService.updateUser(id, userDTO);
+
             if (updatedUser == null)
                 return ResponseEntity.notFound().build();
-            return ResponseEntity.ok(updatedUser);
+
+            String newToken = JwtUtil.generate(
+                    updatedUser.getEmail(),
+                    updatedUser.getRole(),
+                    updatedUser.getName(),
+                    Math.toIntExact(updatedUser.getId())
+            );
+
+            return ResponseEntity.ok("{\"token\":\"" + newToken + "\"}");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(null);
         }
@@ -97,9 +115,14 @@ public class UserController {
                                            @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            boolean deleted = userService.deleteUser(id, JwtUtil.getId(token), JwtUtil.getRole(token));
+            if (!Objects.equals(id, JwtUtil.getId(token)) && !Objects.equals("ADMIN", JwtUtil.getRole(token)))
+                throw new IllegalArgumentException("User ID does not match");
+
+            boolean deleted = userService.deleteUser(id);
+
             if (!deleted)
                 return ResponseEntity.notFound().build();
+
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(null);

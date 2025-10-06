@@ -18,7 +18,7 @@ public class PlaneController {
 
     @GetMapping
     public ResponseEntity<List<List<?>>> getAllPlanes() {
-        List<List<?>> result = planeService.getAllPlanes();
+        List<List<?>> result = planeService.getAllPlanesCombined();
         if (result == null)
             return ResponseEntity.notFound().build();
         return ResponseEntity.ok(result);

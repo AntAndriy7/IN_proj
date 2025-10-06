@@ -1,7 +1,6 @@
 package com.example.in_proj.services;
 
 import com.example.in_proj.dto.AuthDTO;
-import com.example.in_proj.dto.BonusDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
@@ -33,16 +32,6 @@ public class UserService {
     private final PlaneRepository planeRepository;
     private final BonusRepository bonusRepository;
     private final UserMapper mapper = UserMapper.INSTANCE;
-
-    public UserDTO getUserController(Long id, Long userIdFromToken) {
-        if (!Objects.equals(id, userIdFromToken)) {
-            throw new IllegalArgumentException("User ID does not match");
-        }
-
-        return userRepository.findById(id)
-                .map(mapper::toDTO)
-                .orElse(null);
-    }
 
     public UserDTO getUser(Long id) {
         return userRepository.findById(id)
@@ -149,11 +138,7 @@ public class UserService {
         return mapper.toDTO(user);
     }
 
-    public UserDTO updateUser(Long id, UserDTO userDTO, Long userIdFromToken) {
-        if (!Objects.equals(id, userIdFromToken)) {
-            throw new IllegalArgumentException("User ID does not match");
-        }
-
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
         return userRepository.findById(id).map(existingUser -> {
             if (userDTO.getName() != null) {
                 existingUser.setName(userDTO.getName());
@@ -176,11 +161,7 @@ public class UserService {
         }).orElse(null);
     }
 
-    public boolean deleteUser(Long id, Long userIdFromToken, String roleFromToken) {
-        if (!Objects.equals(id, userIdFromToken) && !Objects.equals(roleFromToken, "ADMIN")) {
-            throw new IllegalArgumentException("User ID does not match");
-        }
-
+    public boolean deleteUser(Long id) {
         if (userRepository.existsById(id)) {
             userRepository.deleteById(id);
             return true;
