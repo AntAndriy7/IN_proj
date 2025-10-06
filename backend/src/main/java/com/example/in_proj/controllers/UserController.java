@@ -46,12 +46,19 @@ public class UserController {
     }
 
     @GetMapping("/plane/{planeId}")
-    public ResponseEntity<List<Map<String, Object>>> getUsersByPlaneId(@PathVariable Long planeId) {
-        List<Map<String, Object>> users = userService.getUsersByPlaneId(planeId);
-        if (users.isEmpty()) {
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<List<Map<String, Object>>> getUsersByPlaneId(@PathVariable Long planeId,
+                                                                       @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            List<Map<String, Object>> users = userService.getUsersByPlaneId(planeId, JwtUtil.getId(token));
+
+            if (users.isEmpty())
+                return ResponseEntity.noContent().build();
+
+            return ResponseEntity.ok(users);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
         }
-        return ResponseEntity.ok(users);
     }
 
     @GetMapping("/out")

@@ -1,5 +1,6 @@
 package com.example.in_proj.services;
 
+import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.PlaneDTO;
 import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
@@ -167,8 +168,10 @@ public class PlaneService {
         return mapper.toDTO(plane);
     }
 
-    public PlaneDTO updatePlane(Long id, PlaneDTO planeDTO) {
+    public PlaneDTO updatePlane(Long id, PlaneDTO planeDTO, Long idFromToken, String roleFromToken) {
         return planeRepository.findById(id).map(existingPlane -> {
+            if (!Objects.equals(existingPlane.getAvia_id(), idFromToken) && Objects.equals("AVIA", roleFromToken))
+                throw new IllegalArgumentException("User ID does not match");
             if (planeDTO.getAvia_id() != 0) {
                 existingPlane.setAvia_id(planeDTO.getAvia_id());
             }
@@ -207,8 +210,11 @@ public class PlaneService {
         }).orElse(null);
     }
 
-    public PlaneDTO statusPlane(Long id) {
+    public PlaneDTO statusPlane(Long id, Long idFromToken, String roleFromToken) {
         return planeRepository.findById(id).map(existingPlane -> {
+            if (!Objects.equals(existingPlane.getAvia_id(), idFromToken) && Objects.equals("AVIA", roleFromToken))
+                throw new IllegalArgumentException("User ID does not match");
+
             // Змінюємо статус літака
             existingPlane.setStatus(false);
             planeRepository.save(existingPlane);

@@ -1,5 +1,6 @@
 package com.example.in_proj.controllers;
 
+import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.BonusDTO;
 import com.example.in_proj.services.BonusService;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/bonus")
@@ -15,30 +17,58 @@ public class BonusController {
     private final BonusService bonusService;
 
     @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<List<?>>> getAllBonusesByClient(@PathVariable Long clientId) {
-        List<List<?>> result = bonusService.getAllBonusesWithAvia(clientId);
-        if (result == null || result.isEmpty()) {
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<List<List<?>>> getAllBonusesByClient(@PathVariable Long clientId,
+                                                               @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            if (!Objects.equals(clientId, JwtUtil.getId(token)))
+                throw new IllegalArgumentException("User ID does not match");
+
+            List<List<?>> result = bonusService.getAllBonusesWithAvia(clientId);
+
+            if (result == null || result.isEmpty())
+                return ResponseEntity.noContent().build();
+
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
         }
-        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/client/{clientId}/avia/{aviaId}")
     public ResponseEntity<BonusDTO> getBonusErrorByClientAndAvia(
-            @PathVariable Long clientId, @PathVariable Long aviaId) {
-        BonusDTO bonus = bonusService.getBonusByClientAndAvia(clientId, aviaId);
-        if (bonus == null) {
-            return ResponseEntity.notFound().build();
+            @PathVariable Long clientId, @PathVariable Long aviaId,
+            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            if (!Objects.equals(clientId, JwtUtil.getId(token)))
+                throw new IllegalArgumentException("User ID does not match");
+            BonusDTO bonus = bonusService.getBonusByClientAndAvia(clientId, aviaId);
+            if (bonus == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(bonus);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
         }
-        return ResponseEntity.ok(bonus);
     }
 
     @PutMapping
-    public ResponseEntity<BonusDTO> upsertBonus(@RequestBody BonusDTO bonusDTO) {
-        BonusDTO updatedBonus = bonusService.upsertBonus(bonusDTO);
-        if (updatedBonus == null) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<BonusDTO> upsertBonus(@RequestBody BonusDTO bonusDTO,
+                                                @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            if (!Objects.equals(bonusDTO.getAvia_id(), JwtUtil.getId(token)))
+                throw new IllegalArgumentException("User ID does not match");
+
+            BonusDTO updatedBonus = bonusService.upsertBonus(bonusDTO);
+
+            if (updatedBonus == null)
+                return ResponseEntity.notFound().build();
+
+            return ResponseEntity.ok(updatedBonus);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
         }
-        return ResponseEntity.ok(updatedBonus);
     }
 }

@@ -1,5 +1,6 @@
 package com.example.in_proj.services;
 
+import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.OrderDTO;
 import com.example.in_proj.dto.PlaneDTO;
 import com.example.in_proj.dto.TicketDTO;
@@ -150,8 +151,10 @@ public class OrderService {
         return occupiedSeats;
     }
 
-    public OrderDTO updateOrder(Long id, OrderDTO orderDTO) {
+    public OrderDTO updateOrder(Long id, OrderDTO orderDTO, Long idFromToken) {
         return orderRepository.findById(id).map(existingOrder -> {
+            if (!Objects.equals(existingOrder.getClient_id(), idFromToken))
+                throw new IllegalArgumentException("User ID does not match");
             if (orderDTO.getClient_id() != 0) {
                 existingOrder.setClient_id(orderDTO.getClient_id());
             }

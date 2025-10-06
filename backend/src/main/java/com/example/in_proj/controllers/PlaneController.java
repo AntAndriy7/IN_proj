@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping(value = "/api/plane")
@@ -57,19 +58,34 @@ public class PlaneController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PlaneDTO> updatePlane(@PathVariable Long id, @RequestBody PlaneDTO planeDTO) {
-        PlaneDTO updatedPlaneData = planeService.updatePlane(id, planeDTO);
-        if (updatedPlaneData == null)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(updatedPlaneData);
+    public ResponseEntity<PlaneDTO> updatePlane(@PathVariable Long id, @RequestBody PlaneDTO planeDTO,
+                                                @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            PlaneDTO updatedPlaneData = planeService.updatePlane(id, planeDTO, JwtUtil.getId(token), JwtUtil.getRole(token));
+
+            if (updatedPlaneData == null)
+                return ResponseEntity.notFound().build();
+
+            return ResponseEntity.ok(updatedPlaneData);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
     @PutMapping("/status/{id}")
-    public ResponseEntity<PlaneDTO> togglePlaneStatus(@PathVariable Long id) {
-        PlaneDTO updatedPlane = planeService.statusPlane(id);
-        if (updatedPlane == null) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<PlaneDTO> togglePlaneStatus(@PathVariable Long id,
+                                                      @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            PlaneDTO updatedPlane = planeService.statusPlane(id, JwtUtil.getId(token), JwtUtil.getRole(token));
+
+            if (updatedPlane == null)
+                return ResponseEntity.notFound().build();
+
+            return ResponseEntity.ok(updatedPlane);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
         }
-        return ResponseEntity.ok(updatedPlane);
     }
 }

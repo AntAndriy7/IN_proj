@@ -1,5 +1,6 @@
 package com.example.in_proj.services;
 
+import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.AuthDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.Bonus;
@@ -74,7 +75,18 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> getUsersByPlaneId(Long planeId) {
+    public List<Map<String, Object>> getUsersByPlaneId(Long planeId, Long idFromToken) {
+        // Отримаємо рейс
+        Plane plane = planeRepository.findById(planeId).orElse(null);
+        if (plane == null) {
+            return List.of();
+        }
+
+        Long aviaId = plane.getAvia_id();
+
+        if (!Objects.equals(aviaId, idFromToken))
+            throw new IllegalArgumentException("User ID does not match");
+
         // Знайдемо всі замовлення для заданого plane_id
         List<Order> orders = orderRepository.findByPlane_id(planeId);
 
@@ -86,14 +98,6 @@ public class UserService {
 
         // Знайдемо користувачів за user_id
         List<User> users = userRepository.findAllById(userIds);
-
-        // Отримаємо рейс
-        Plane plane = planeRepository.findById(planeId).orElse(null);
-        if (plane == null) {
-            return List.of();
-        }
-
-        Long aviaId = plane.getAvia_id();
 
         // Завантажуємо бонуси
         List<Bonus> bonuses = bonusRepository.findByUserIdsAndAviaId(userIds, aviaId);
