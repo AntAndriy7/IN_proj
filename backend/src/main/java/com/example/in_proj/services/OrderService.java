@@ -2,17 +2,17 @@ package com.example.in_proj.services;
 
 import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.OrderDTO;
-import com.example.in_proj.dto.PlaneDTO;
+import com.example.in_proj.dto.FlightDTO;
 import com.example.in_proj.dto.TicketDTO;
 import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
-import com.example.in_proj.entity.Plane;
+import com.example.in_proj.entity.Flight;
 import com.example.in_proj.entity.Ticket;
 import com.example.in_proj.mapper.OrderMapper;
-import com.example.in_proj.mapper.PlaneMapper;
+import com.example.in_proj.mapper.FlightMapper;
 import com.example.in_proj.repository.BonusRepository;
 import com.example.in_proj.repository.OrderRepository;
-import com.example.in_proj.repository.PlaneRepository;
+import com.example.in_proj.repository.FlightRepository;
 import com.example.in_proj.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final TicketService ticketService;
-    private final PlaneService planeService;
+    private final FlightService flightService;
     private final BonusRepository bonusRepository;
     private final OrderRepository orderRepository;
-    private final PlaneRepository planeRepository;
+    private final FlightRepository flightRepository;
     private final TicketRepository ticketRepository;
     private final OrderMapper mapper = OrderMapper.INSTANCE;
 
@@ -41,19 +41,19 @@ public class OrderService {
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
 
-        // 3. Отримуємо літаки, пов’язані з замовленнями через PlaneService
-        Set<Long> planeIds = orders.stream()
-                .map(Order::getPlane_id)
+        // 3. Отримуємо літаки, пов’язані з замовленнями через FlightService
+        Set<Long> flightIds = orders.stream()
+                .map(Order::getFlight_id)
                 .collect(Collectors.toSet());
 
-        List<PlaneDTO> planes = planeService.getAllPlanes(planeIds);
+        List<FlightDTO> flights = flightService.getAllFlights(flightIds);
 
-        // 4. Мінімальні дані авіа-користувачів через PlaneService
-        Set<Long> aviaIds = planes.stream()
-                .map(PlaneDTO::getAvia_id)
+        // 4. Мінімальні дані авіа-користувачів через FlightService
+        Set<Long> aviaIds = flights.stream()
+                .map(FlightDTO::getAvia_id)
                 .collect(Collectors.toSet());
 
-        List<Map<String, Object>> users = planeService.getAvia(aviaIds);
+        List<Map<String, Object>> users = flightService.getAvia(aviaIds);
 
         // 5. Отримуємо всі квитки для цих замовлень через TicketService
         List<TicketDTO> tickets = orders.stream()
@@ -63,7 +63,7 @@ public class OrderService {
         // 6. Формуємо комбінований список
         List<List<?>> combined = new ArrayList<>();
         combined.add(orderDTOs);  // 1-й список — замовлення
-        combined.add(planes);     // 2-й список — літаки
+        combined.add(flights);     // 2-й список — літаки
         combined.add(users);      // 3-й список — авіа-користувачі
         combined.add(tickets);    // 4-й список — квитки
 
@@ -80,17 +80,17 @@ public class OrderService {
         System.out.println("Used Bonuses: " + usedBonuses);
 
         // Отримуємо літак
-        Plane plane = planeRepository.findById(orderDTO.getPlane_id())
-                .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + orderDTO.getPlane_id()));
+        Flight flight = flightRepository.findById(orderDTO.getFlight_id())
+                .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + orderDTO.getFlight_id()));
 
         if (usedBonuses != 0) {
             // Отримуємо bonus
-            Bonus bonus = bonusRepository.findByUserIdAndAviaId(orderDTO.getClient_id(), plane.getAvia_id());
+            Bonus bonus = bonusRepository.findByUserIdAndAviaId(orderDTO.getClient_id(), flight.getAvia_id());
             if (bonus == null) {
                 throw new IllegalArgumentException("Bonus not found!");
             } else if (bonus.getBonus_count() < usedBonuses) {
                 throw new IllegalArgumentException("The bonuses used are not valid!");
-            } else if (plane.getTicket_price() * names.size() - usedBonuses != orderDTO.getTotal_price()) {
+            } else if (flight.getTicket_price() * names.size() - usedBonuses != orderDTO.getTotal_price()) {
                 throw new IllegalArgumentException("The order itself is not valid!");
             }
 
@@ -99,20 +99,20 @@ public class OrderService {
         }
 
         // Перевіряємо наявність достатньої кількості місць
-        List<Long> occupiedSeats = getOccupiedSeatsForPlane(plane.getId());
-        long availableSeats = plane.getSeats() - occupiedSeats.size();
+        List<Long> occupiedSeats = getOccupiedSeatsForFlight(flight.getId());
+        long availableSeats = flight.getSeats() - occupiedSeats.size();
         if (availableSeats < names.size()) {
             throw new IllegalArgumentException("Not enough seats available.");
         }
 
         // Створюємо замовлення
         Order order = mapper.toEntity(orderDTO);
-        //order.setTotal_price(plane.getTicket_price() * names.size());
+        //order.setTotal_price(flight.getTicket_price() * names.size());
         order = orderRepository.save(order);
 
         // Генеруємо список доступних номерів місць
         List<Long> availableSeatNumbers = new ArrayList<>();
-        for (long i = 1; i <= plane.getSeats(); i++) {
+        for (long i = 1; i <= flight.getSeats(); i++) {
             if (!occupiedSeats.contains(i)) {
                 availableSeatNumbers.add(i);
             }
@@ -126,21 +126,21 @@ public class OrderService {
             ticket.setName(names.get(i));
             ticket.setSeat_number(availableSeatNumbers.get(i));
             tickets.add(ticket);
-            plane.setOccupied_seats(plane.getOccupied_seats() + 1);
+            flight.setOccupied_seats(flight.getOccupied_seats() + 1);
         }
 
         // Зберігаємо квитки
         ticketRepository.saveAll(tickets);
 
         // Оновлюємо потяг з новими даними occupied_seats
-        planeRepository.save(plane);
+        flightRepository.save(flight);
 
         // Повертаємо DTO
         return mapper.toDTO(order);
     }
 
-    public List<Long> getOccupiedSeatsForPlane(Long planeId) {
-        List<Order> bookedOrders = orderRepository.findByPlane_idPayment_status(planeId, Arrays.asList("booked", "paid"));
+    public List<Long> getOccupiedSeatsForFlight(Long flightId) {
+        List<Order> bookedOrders = orderRepository.findByFlight_idPayment_status(flightId, Arrays.asList("booked", "paid"));
 
         List<Long> occupiedSeats = new ArrayList<>();
         for (Order order : bookedOrders) {
@@ -158,8 +158,8 @@ public class OrderService {
             if (orderDTO.getClient_id() != 0) {
                 existingOrder.setClient_id(orderDTO.getClient_id());
             }
-            if (orderDTO.getPlane_id() != 0) {
-                existingOrder.setPlane_id(orderDTO.getPlane_id());
+            if (orderDTO.getFlight_id() != 0) {
+                existingOrder.setFlight_id(orderDTO.getFlight_id());
             }
             if (orderDTO.getTicket_quantity() != 0) {
                 existingOrder.setTicket_quantity(orderDTO.getTicket_quantity());
@@ -180,19 +180,19 @@ public class OrderService {
 
     public void processOrder(Order order, int divider) {
         Long userId = order.getClient_id();
-        Long planeId = order.getPlane_id();
+        Long flightId = order.getFlight_id();
 
-        // Знаходимо літак за planeId
-        Plane plane = planeRepository.findById(planeId)
-                .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + planeId));
+        // Знаходимо літак за flightId
+        Flight flight = flightRepository.findById(flightId)
+                .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + flightId));
 
         // Зменшуємо кількість місць
-        plane.setOccupied_seats(plane.getOccupied_seats() - order.getTicket_quantity());
+        flight.setOccupied_seats(flight.getOccupied_seats() - order.getTicket_quantity());
 
         // Якщо замовлення зі статусом "paid"
         if ("paid".equals(order.getPayment_status())) {
             // Отримуємо avia_id із літака
-            Long aviaId = plane.getAvia_id();
+            Long aviaId = flight.getAvia_id();
 
             // Розраховуємо бонус
             long bonusAmount = order.getTotal_price() / divider;
@@ -213,6 +213,6 @@ public class OrderService {
         // Змінюємо статус замовлення на "canceled"
         order.setPayment_status("canceled");
         orderRepository.save(order);
-        planeRepository.save(plane);
+        flightRepository.save(flight);
     }
 }

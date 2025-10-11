@@ -15,8 +15,8 @@ public class Order {
     @Column(name = "client_id")
     private long client_id;
 
-    @Column(name = "plane_id")
-    private long plane_id;
+    @Column(name = "flight_id")
+    private long flight_id;
 
     @Column(name = "ticket_quantity")
     private long ticket_quantity;

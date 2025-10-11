@@ -45,12 +45,12 @@ public class UserController {
         }
     }
 
-    @GetMapping("/plane/{planeId}")
-    public ResponseEntity<List<Map<String, Object>>> getUsersByPlaneId(@PathVariable Long planeId,
+    @GetMapping("/flight/{flightId}")
+    public ResponseEntity<List<Map<String, Object>>> getUsersByFlightId(@PathVariable Long flightId,
                                                                        @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            List<Map<String, Object>> users = userService.getUsersByPlaneId(planeId, JwtUtil.getId(token));
+            List<Map<String, Object>> users = userService.getUsersByFlightId(flightId, JwtUtil.getId(token));
 
             if (users.isEmpty())
                 return ResponseEntity.noContent().build();

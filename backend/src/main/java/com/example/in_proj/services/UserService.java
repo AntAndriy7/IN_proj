@@ -5,12 +5,12 @@ import com.example.in_proj.dto.AuthDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
-import com.example.in_proj.entity.Plane;
+import com.example.in_proj.entity.Flight;
 import com.example.in_proj.entity.User;
 import com.example.in_proj.mapper.UserMapper;
 import com.example.in_proj.repository.BonusRepository;
 import com.example.in_proj.repository.OrderRepository;
-import com.example.in_proj.repository.PlaneRepository;
+import com.example.in_proj.repository.FlightRepository;
 import com.example.in_proj.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
-    private final PlaneRepository planeRepository;
+    private final FlightRepository flightRepository;
     private final BonusRepository bonusRepository;
     private final UserMapper mapper = UserMapper.INSTANCE;
 
@@ -75,20 +75,20 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> getUsersByPlaneId(Long planeId, Long idFromToken) {
+    public List<Map<String, Object>> getUsersByFlightId(Long flightId, Long idFromToken) {
         // Отримаємо рейс
-        Plane plane = planeRepository.findById(planeId).orElse(null);
-        if (plane == null) {
+        Flight flight = flightRepository.findById(flightId).orElse(null);
+        if (flight == null) {
             return List.of();
         }
 
-        Long aviaId = plane.getAvia_id();
+        Long aviaId = flight.getAvia_id();
 
         if (!Objects.equals(aviaId, idFromToken))
             throw new IllegalArgumentException("User ID does not match");
 
-        // Знайдемо всі замовлення для заданого plane_id
-        List<Order> orders = orderRepository.findByPlane_id(planeId);
+        // Знайдемо всі замовлення для заданого flight_id
+        List<Order> orders = orderRepository.findByFlight_id(flightId);
 
         // Отримаємо унікальні user_id з цих замовлень
         List<Long> userIds = orders.stream()

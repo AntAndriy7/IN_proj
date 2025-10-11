@@ -7,8 +7,9 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PlaneDTO {
+public class AirportDTO {
     private long id;
-    private String model;
-    private long seats_number;
+    private String name;
+    private String city;
+    private String code;
 }

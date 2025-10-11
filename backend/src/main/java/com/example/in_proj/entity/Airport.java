@@ -5,16 +5,19 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "\"plane\"")
-public class Plane {
+@Table(name = "\"airport\"")
+public class Airport {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private long id;
 
-    @Column(name = "model")
-    private String model;
+    @Column(name = "name")
+    private String name;
 
-    @Column(name = "seats_number")
-    private long seats_number;
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "code")
+    private String code;
 }

@@ -12,8 +12,8 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.client_id = :client_id")
     List<Order> findByClient_id(Long client_id);
-    @Query("SELECT o FROM Order o WHERE o.plane_id = :plane_id")
-    List<Order> findByPlane_id(Long plane_id);
-    @Query("SELECT o FROM Order o WHERE o.plane_id = :plane_id AND o.payment_status IN :statuses")
-    List<Order> findByPlane_idPayment_status(Long plane_id, List<String> statuses);
+    @Query("SELECT o FROM Order o WHERE o.flight_id = :flight_id")
+    List<Order> findByFlight_id(Long flight_id);
+    @Query("SELECT o FROM Order o WHERE o.flight_id = :flight_id AND o.payment_status IN :statuses")
+    List<Order> findByFlight_idPayment_status(Long flight_id, List<String> statuses);
 }

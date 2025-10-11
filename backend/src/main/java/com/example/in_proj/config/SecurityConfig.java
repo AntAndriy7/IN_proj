@@ -29,17 +29,20 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/static/**").permitAll()
-                        .requestMatchers("/api/plane/status").permitAll()
+                        .requestMatchers("/api/flight/status").permitAll()
                         .requestMatchers("/api/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user").permitAll()
 
-                        .requestMatchers("/api/plane").hasAnyRole("ADMIN", "AVIA")
-                        .requestMatchers("/api/plane/avia/*", "/api/user/plane/*", "/api/bonus").hasRole("AVIA")
-                        .requestMatchers("/api/user/*", "/api/bonus/client/**").hasRole("CLIENT")
+                        .requestMatchers("/api/user/out").hasRole("ADMIN")
+                        .requestMatchers("/api/bonus/client/**").hasRole("CLIENT")
+                        .requestMatchers("/api/flight/avia/*", "/api/user/flight/*", "/api/bonus").hasRole("AVIA")
+                        .requestMatchers("/api/airport", "/api/plane", "/api/flight", "/api/flight/status/*").hasAnyRole("ADMIN", "AVIA")
+                        .requestMatchers("/api/order/**", "/api/ticket/order/*").hasAnyRole("ADMIN", "CLIENT")
 
-                        .requestMatchers("/api/order/client/*", "/api/order/*"/*PUT*/, "/api/ticket/order/*", "/api/plane/*").hasRole("CLIENT") //test order (paid -> canceled)
+                        .requestMatchers(HttpMethod.PUT, "/api/flight/*").hasAnyRole("ADMIN", "AVIA")
+                        .requestMatchers(HttpMethod.GET, "/api/flight/*").hasRole("CLIENT")
 
-                        .requestMatchers(HttpMethod.POST, "/api/order").hasRole("CLIENT")
+                        .requestMatchers("/api/user/*").authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
