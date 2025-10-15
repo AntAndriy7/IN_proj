@@ -13,9 +13,6 @@ import java.sql.Time;
 public class FlightDTO {
     private long id;
     private long avia_id;
-    private String plane_number;
-    private String departure;
-    private String destination;
     private Time departure_time;
     private Time arrival_time;
     private Date departure_date;
@@ -24,4 +21,7 @@ public class FlightDTO {
     private long ticket_price;
     private long seats;
     private long occupied_seats;
+    private long plane_id;
+    private long departure_id;
+    private long destination_id;
 }

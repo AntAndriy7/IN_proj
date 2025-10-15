@@ -1,6 +1,5 @@
 package com.example.in_proj.services;
 
-import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.FlightDTO;
 import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
@@ -17,12 +16,15 @@ import java.sql.Time;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class FlightService {
 
     private final UserService userService;
+    private final PlaneService planeService;
+    private final AirportService airportService;
     private final FlightRepository flightRepository;
     private final OrderRepository orderRepository;
     private final BonusRepository bonusRepository;
@@ -61,6 +63,37 @@ public class FlightService {
                 .collect(Collectors.toList());
     }
 
+    public List<Map<String, Object>> getPlanes(Set<Long> planeIds) {
+        return planeIds.stream()
+                .map(planeService::getPlane)
+                .filter(Objects::nonNull)
+                .map(plane -> {
+                    Map<String, Object> minimalPlane = new HashMap<>();
+                    minimalPlane.put("id", plane.getId());
+                    minimalPlane.put("model", plane.getModel());
+                    minimalPlane.put("seats_number", plane.getSeats_number());
+                    return minimalPlane;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getAirports(Set<Long> airportIds) {
+        return airportIds.stream()
+                .map(airportService::getAirport)
+                .filter(Objects::nonNull)
+                .map(airport -> {
+                    Map<String, Object> minimalAirport = new HashMap<>();
+                    minimalAirport.put("id", airport.getId());
+                    minimalAirport.put("name", airport.getName());
+                    minimalAirport.put("city", airport.getCity());
+                    minimalAirport.put("code", airport.getCode());
+                    return minimalAirport;
+                })
+                .collect(Collectors.toList());
+    }
+
+
+
     public List<List<?>> getAllFlightsCombined() {
         checkAndUpdateFlightStatuses();
 
@@ -71,11 +104,24 @@ public class FlightService {
                 .map(Flight::getAvia_id)
                 .collect(Collectors.toSet());
 
+        Set<Long> planeIds = flights.stream()
+                .map(Flight::getPlane_id)
+                .collect(Collectors.toSet());
+
+        Set<Long> airportIds = flights.stream()
+                .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
+                .collect(Collectors.toSet());
+
         List<Map<String, Object>> users = getAvia(aviaIds);
+        List<Map<String, Object>> planes = getPlanes(planeIds);
+        List<Map<String, Object>> airports = getAirports(airportIds);
 
         List<List<?>> combined = new ArrayList<>();
         combined.add(flightDTOs);
         combined.add(users);
+        combined.add(planes);
+        combined.add(airports);
+
         return combined;
     }
 
@@ -91,20 +137,24 @@ public class FlightService {
                 .map(Flight::getAvia_id)
                 .collect(Collectors.toSet());
 
-        List<Map<String, Object>> users = aviaIds.stream()
-                .map(userService::getUser)
-                .filter(Objects::nonNull)
-                .map(user -> {
-                    Map<String, Object> minimalUser = new HashMap<>();
-                    minimalUser.put("id", user.getId());
-                    minimalUser.put("name", user.getName());
-                    return minimalUser;
-                })
-                .collect(Collectors.toList());
+        Set<Long> planeIds = flights.stream()
+                .map(Flight::getPlane_id)
+                .collect(Collectors.toSet());
+
+        Set<Long> airportIds = flights.stream()
+                .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
+                .collect(Collectors.toSet());
+
+        List<Map<String, Object>> users = getAvia(aviaIds);
+        List<Map<String, Object>> planes = getPlanes(planeIds);
+        List<Map<String, Object>> airports = getAirports(airportIds);
 
         List<List<?>> combined = new ArrayList<>();
         combined.add(flightDTOs);
         combined.add(users);
+        combined.add(planes);
+        combined.add(airports);
+
         return combined;
     }
 
@@ -125,11 +175,32 @@ public class FlightService {
         }
     }
 
-    public List<FlightDTO> getFlightsByAviaId(Long aviaId) {
-        return flightRepository.findByAviaId(aviaId).stream()
+    public List<List<?>> getFlightsByAviaId(Long aviaId) {
+        List<Flight> flights = flightRepository.findByAviaId(aviaId);
+
+        List<FlightDTO> flightDTOs = flights.stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
+
+        Set<Long> planeIds = flights.stream()
+                .map(Flight::getPlane_id)
+                .collect(Collectors.toSet());
+
+        Set<Long> airportIds = flights.stream()
+                .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
+                .collect(Collectors.toSet());
+
+        List<Map<String, Object>> planes = getPlanes(planeIds);
+        List<Map<String, Object>> airports = getAirports(airportIds);
+
+        List<List<?>> combined = new ArrayList<>();
+        combined.add(flightDTOs);
+        combined.add(planes);
+        combined.add(airports);
+
+        return combined;
     }
+
 
     public FlightDTO createFlight(FlightDTO flightDTO, Long userIdFromToken) {
         if (!Objects.equals(flightDTO.getAvia_id(), userIdFromToken)) {
@@ -175,14 +246,14 @@ public class FlightService {
             if (flightDTO.getAvia_id() != 0) {
                 existingFlight.setAvia_id(flightDTO.getAvia_id());
             }
-            if (flightDTO.getPlane_number() != null) {
-                existingFlight.setPlane_number(flightDTO.getPlane_number());
+            if (flightDTO.getPlane_id() != 0) {
+                existingFlight.setPlane_id(flightDTO.getPlane_id());
             }
-            if (flightDTO.getDeparture() != null) {
-                existingFlight.setDeparture(flightDTO.getDeparture());
+            if (flightDTO.getDeparture_id() != 0) {
+                existingFlight.setDeparture_id(flightDTO.getDeparture_id());
             }
-            if (flightDTO.getDestination() != null) {
-                existingFlight.setDestination(flightDTO.getDestination());
+            if (flightDTO.getDestination_id() != 0) {
+                existingFlight.setDestination_id(flightDTO.getDestination_id());
             }
             if (flightDTO.getDeparture_time() != null) {
                 existingFlight.setDeparture_time(flightDTO.getDeparture_time());

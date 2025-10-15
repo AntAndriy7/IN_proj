@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/static/**").permitAll()
-                        .requestMatchers("/api/flight/status").permitAll()
+                        .requestMatchers("/api/flight/status", "/api/flight/opensky").permitAll()
                         .requestMatchers("/api/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user").permitAll()
 

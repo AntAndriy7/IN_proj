@@ -18,15 +18,6 @@ public class Flight {
     @Column(name = "avia_id")
     private long avia_id;
 
-    @Column(name = "plane_number")
-    private String plane_number;
-
-    @Column(name = "departure")
-    private String departure;
-
-    @Column(name = "destination")
-    private String destination;
-
     @Column(name = "departure_time")
     private Time departure_time;
 
@@ -50,4 +41,13 @@ public class Flight {
 
     @Column(name = "occupied_seats")
     private long occupied_seats;
+
+    @Column(name = "plane_id")
+    private long plane_id;
+
+    @Column(name = "departure_id")
+    private long departure_id;
+
+    @Column(name = "destination_id")
+    private long destination_id;
 }

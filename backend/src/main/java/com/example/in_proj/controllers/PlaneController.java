@@ -1,5 +1,6 @@
 package com.example.in_proj.controllers;
 
+import com.example.in_proj.dto.OpenSkyPlaneDTO;
 import com.example.in_proj.dto.PlaneDTO;
 import com.example.in_proj.services.PlaneService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,12 @@ public class PlaneController {
     @GetMapping
     public ResponseEntity<List<PlaneDTO>> getAllPlanes() {
         List<PlaneDTO> planes = planeService.getAllPlanes();
-        return ResponseEntity.ok(planes);
+        return planes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(planes);
+    }
+
+    @GetMapping("/opensky")
+    public ResponseEntity<List<OpenSkyPlaneDTO>> getPlanesFromOpenSky() {
+        List<OpenSkyPlaneDTO> planes = planeService.getPlanesFromOpenSky();
+        return planes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(planes);
     }
 }

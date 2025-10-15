@@ -16,6 +16,12 @@ public class AirportService {
     private final AirportRepository airportRepository;
     private final AirportMapper mapper = AirportMapper.INSTANCE;
 
+    public AirportDTO getAirport(Long id) {
+        return airportRepository.findById(id)
+                .map(mapper::toDTO)
+                .orElse(null);
+    }
+
     public List<AirportDTO> getAllAirports() {
         return airportRepository.findAll().stream()
                 .map(mapper::toDTO)
