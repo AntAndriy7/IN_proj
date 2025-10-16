@@ -35,7 +35,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/user/out").hasRole("ADMIN")
                         .requestMatchers("/api/bonus/client/**").hasRole("CLIENT")
-                        .requestMatchers("/api/flight/avia/*", "/api/user/flight/*", "/api/bonus").hasRole("AVIA")
+                        .requestMatchers("/api/flight/avia/*", "/api/user/flight/*", "/api/user/avia/*", "/api/bonus").hasRole("AVIA")
                         .requestMatchers("/api/airport", "/api/plane", "/api/flight", "/api/flight/status/*").hasAnyRole("ADMIN", "AVIA")
                         .requestMatchers("/api/order/**", "/api/ticket/order/*").hasAnyRole("ADMIN", "CLIENT")
 

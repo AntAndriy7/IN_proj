@@ -37,33 +37,30 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO orderDTO,
-                                                @RequestParam List<String> tickets,
-                                                @RequestParam(required = false) Long usedBonuses,
-                                                @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> createOrder(@RequestBody OrderDTO orderDTO, @RequestParam List<String> tickets,
+                                         @RequestParam(required = false) Long usedBonuses,
+                                         @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
             if (!Objects.equals(orderDTO.getClient_id(), JwtUtil.getId(token)))
                 throw new IllegalArgumentException("User ID does not match");
-            OrderDTO newOrder = orderService.addOrder(orderDTO, tickets, usedBonuses);
-            return ResponseEntity.ok(newOrder);
+            orderService.addOrder(orderDTO, tickets, usedBonuses);
+            return ResponseEntity.ok("Order successfully added!");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderDTO> updateOrder(@PathVariable Long id, @RequestBody OrderDTO orderDTO,
+    public ResponseEntity<?> updateOrder(@PathVariable Long id, @RequestBody OrderDTO orderDTO,
                                                 @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            OrderDTO updatedOrder = orderService.updateOrder(id, orderDTO, JwtUtil.getId(token));
-            if (updatedOrder == null) {
+            if (orderService.updateOrder(id, orderDTO, JwtUtil.getId(token)) == null)
                 return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.ok(updatedOrder);
+            return ResponseEntity.ok("Order successfully updated!");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

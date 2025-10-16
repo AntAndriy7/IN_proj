@@ -19,7 +19,6 @@ public class FlightDTO {
     private Date arrival_date;
     private boolean status;
     private long ticket_price;
-    private long seats;
     private long occupied_seats;
     private long plane_id;
     private long departure_id;

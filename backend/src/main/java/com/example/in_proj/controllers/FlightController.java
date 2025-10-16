@@ -35,7 +35,7 @@ public class FlightController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createFlight(@RequestBody FlightDTO flightDTO,
+    public ResponseEntity<?> createFlight(@RequestBody FlightDTO flightDTO,
                                                 @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
@@ -46,35 +46,31 @@ public class FlightController {
         }
     }
 
-    @PutMapping("/{id}")//
-    public ResponseEntity<FlightDTO> updateFlight(@PathVariable Long id, @RequestBody FlightDTO flightDTO,
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateFlight(@PathVariable Long id, @RequestBody FlightDTO flightDTO,
                                                 @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            FlightDTO updatedFlightData = flightService.updateFlight(id, flightDTO, JwtUtil.getId(token), JwtUtil.getRole(token));
-
-            if (updatedFlightData == null)
+            if (flightService.updateFlight(id, flightDTO, JwtUtil.getId(token), JwtUtil.getRole(token)) == null)
                 return ResponseEntity.notFound().build();
 
-            return ResponseEntity.ok(updatedFlightData);
+            return ResponseEntity.ok("Flight details successfully changed");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @PutMapping("/status/{id}")
-    public ResponseEntity<FlightDTO> toggleFlightStatus(@PathVariable Long id,
+    public ResponseEntity<?> toggleFlightStatus(@PathVariable Long id,
                                                       @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            FlightDTO updatedFlight = flightService.statusFlight(id, JwtUtil.getId(token), JwtUtil.getRole(token));
-
-            if (updatedFlight == null)
+            if (flightService.statusFlight(id, JwtUtil.getId(token), JwtUtil.getRole(token)) == null)
                 return ResponseEntity.notFound().build();
 
-            return ResponseEntity.ok(updatedFlight);
+            return ResponseEntity.ok("Flight details successfully changed");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

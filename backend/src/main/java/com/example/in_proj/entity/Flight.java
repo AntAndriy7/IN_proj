@@ -36,9 +36,6 @@ public class Flight {
     @Column(name = "ticket_price")
     private long ticket_price;
 
-    @Column(name = "seats")
-    private long seats;
-
     @Column(name = "occupied_seats")
     private long occupied_seats;
 

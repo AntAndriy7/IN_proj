@@ -27,4 +27,15 @@ public class PlaneController {
         List<OpenSkyPlaneDTO> planes = planeService.getPlanesFromOpenSky();
         return planes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(planes);
     }
+
+    @PostMapping
+    public ResponseEntity<?> createPlane(@RequestBody PlaneDTO planeDTO) {
+        try {
+            if (planeService.createPlane(planeDTO) == null)
+                return ResponseEntity.notFound().build();
+            return ResponseEntity.ok("Plane successfully created!");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

@@ -1,19 +1,11 @@
 package com.example.in_proj.services;
 
-import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.OrderDTO;
 import com.example.in_proj.dto.FlightDTO;
 import com.example.in_proj.dto.TicketDTO;
-import com.example.in_proj.entity.Bonus;
-import com.example.in_proj.entity.Order;
-import com.example.in_proj.entity.Flight;
-import com.example.in_proj.entity.Ticket;
 import com.example.in_proj.mapper.OrderMapper;
-import com.example.in_proj.mapper.FlightMapper;
-import com.example.in_proj.repository.BonusRepository;
-import com.example.in_proj.repository.OrderRepository;
-import com.example.in_proj.repository.FlightRepository;
-import com.example.in_proj.repository.TicketRepository;
+import com.example.in_proj.entity.*;
+import com.example.in_proj.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +18,7 @@ public class OrderService {
 
     private final TicketService ticketService;
     private final FlightService flightService;
+    private final PlaneRepository planeRepository;
     private final BonusRepository bonusRepository;
     private final OrderRepository orderRepository;
     private final FlightRepository flightRepository;
@@ -62,10 +55,10 @@ public class OrderService {
 
         // 6. Формуємо комбінований список
         List<List<?>> combined = new ArrayList<>();
-        combined.add(orderDTOs);  // 1-й список — замовлення
-        combined.add(flights);     // 2-й список — літаки
-        combined.add(users);      // 3-й список — авіа-користувачі
-        combined.add(tickets);    // 4-й список — квитки
+        combined.add(orderDTOs);
+        combined.add(flights);
+        combined.add(users);
+        combined.add(tickets);
 
         return combined;
     }
@@ -76,12 +69,13 @@ public class OrderService {
             throw new IllegalArgumentException("Name list cannot be empty.");
         }
 
-        System.out.println("Total Price: " + orderDTO.getTotal_price());
-        System.out.println("Used Bonuses: " + usedBonuses);
-
-        // Отримуємо літак
+        // Отримуємо рейс
         Flight flight = flightRepository.findById(orderDTO.getFlight_id())
                 .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + orderDTO.getFlight_id()));
+
+        // Отримуємо літак
+        Plane plane = planeRepository.findById(flight.getPlane_id())
+                .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + flight.getPlane_id()));
 
         if (usedBonuses != 0) {
             // Отримуємо bonus
@@ -96,11 +90,14 @@ public class OrderService {
 
             bonus.setBonus_count(bonus.getBonus_count() - usedBonuses);
             bonusRepository.save(bonus);
+        } else {
+            if (flight.getTicket_price() * orderDTO.getTicket_quantity() != orderDTO.getTotal_price())
+                throw new IllegalArgumentException("Error processing order price.");
         }
 
         // Перевіряємо наявність достатньої кількості місць
         List<Long> occupiedSeats = getOccupiedSeatsForFlight(flight.getId());
-        long availableSeats = flight.getSeats() - occupiedSeats.size();
+        long availableSeats = plane.getSeats_number() - occupiedSeats.size();
         if (availableSeats < names.size()) {
             throw new IllegalArgumentException("Not enough seats available.");
         }
@@ -112,7 +109,7 @@ public class OrderService {
 
         // Генеруємо список доступних номерів місць
         List<Long> availableSeatNumbers = new ArrayList<>();
-        for (long i = 1; i <= flight.getSeats(); i++) {
+        for (long i = 1; i <= plane.getSeats_number(); i++) {
             if (!occupiedSeats.contains(i)) {
                 availableSeatNumbers.add(i);
             }

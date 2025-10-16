@@ -30,12 +30,6 @@ public class FlightService {
     private final BonusRepository bonusRepository;
     private final FlightMapper mapper = FlightMapper.INSTANCE;
 
-    public FlightDTO getFlight(Long id) {
-        return flightRepository.findById(id)
-                .map(mapper::toDTO)
-                .orElse(null);
-    }
-
     public List<FlightDTO> getAllFlights(Set<Long> flightIds) {
         List<Flight> flights;
 
@@ -52,9 +46,9 @@ public class FlightService {
 
     public List<Map<String, Object>> getAvia(Set<Long> aviaIds) {
         return aviaIds.stream()
-                .map(userService::getUser)       // отримуємо користувача по aviaId
-                .filter(Objects::nonNull)        // відкидаємо null
-                .map(user -> {                   // мінімальні дані
+                .map(userService::getUser)
+                .filter(Objects::nonNull)
+                .map(user -> {
                     Map<String, Object> minimalUser = new HashMap<>();
                     minimalUser.put("id", user.getId());
                     minimalUser.put("name", user.getName());
@@ -269,9 +263,6 @@ public class FlightService {
             }
             if (flightDTO.getTicket_price() != 0) {
                 existingFlight.setTicket_price(flightDTO.getTicket_price());
-            }
-            if (flightDTO.getSeats() != 0) {
-                existingFlight.setSeats(flightDTO.getSeats());
             }
             if (flightDTO.getOccupied_seats() != 0) {
                 existingFlight.setOccupied_seats(flightDTO.getOccupied_seats());

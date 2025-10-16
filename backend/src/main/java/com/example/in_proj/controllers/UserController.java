@@ -61,6 +61,22 @@ public class UserController {
         }
     }
 
+    @GetMapping("/avia/{aviaId}")
+    public ResponseEntity<List<Map<String, Object>>> getUsersByAviaId(@PathVariable Long aviaId,
+                                                                        @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        try {
+            List<Map<String, Object>> users = userService.getUsersByAviaIdId(aviaId, JwtUtil.getId(token));
+
+            if (users.isEmpty())
+                return ResponseEntity.noContent().build();
+
+            return ResponseEntity.ok(users);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
     @GetMapping("/out")
     public ResponseEntity<List<UserDTO>> getInactiveUsers() {
         List<UserDTO> inactiveUsers = userService.getInactiveUsers();
@@ -81,7 +97,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody AuthDTO authDTO) {
+    public ResponseEntity<?> login(@RequestBody AuthDTO authDTO) {
         if (userService.authenticate(authDTO)) {
             User user = userService.getByEmail(authDTO.getEmail());
             String token = JwtUtil.generate(user.getEmail(), user.getRole(), user.getName(), Math.toIntExact(user.getId()));

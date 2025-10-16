@@ -31,5 +31,8 @@ public class User {
 
     @Column(name = "recent_activity")
     private Date recentActivity;
+
+    @Column(name = "is_deleted")
+    private boolean is_deleted;
 }
 

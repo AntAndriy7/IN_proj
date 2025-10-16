@@ -2,6 +2,7 @@ package com.example.in_proj.services;
 
 import com.example.in_proj.dto.OpenSkyPlaneDTO;
 import com.example.in_proj.dto.PlaneDTO;
+import com.example.in_proj.entity.Plane;
 import com.example.in_proj.mapper.PlaneMapper;
 import com.example.in_proj.repository.PlaneRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -80,5 +81,12 @@ public class PlaneService {
         }
 
         return cachedPlanes;
+    }
+
+    public PlaneDTO createPlane(PlaneDTO planeDTO) {
+        Plane plane = mapper.toEntity(planeDTO);
+        plane = planeRepository.save(plane);
+
+        return mapper.toDTO(plane);
     }
 }

@@ -17,4 +17,5 @@ public class UserDTO {
     private String password;
     private String role;
     private Date recentActivity;
+    private boolean is_deleted;
 }

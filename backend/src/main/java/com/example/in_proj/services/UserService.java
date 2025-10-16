@@ -1,6 +1,5 @@
 package com.example.in_proj.services;
 
-import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.AuthDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.Bonus;
@@ -114,6 +113,55 @@ public class UserService {
             return result;
         }).collect(Collectors.toList());
     }
+
+    public List<Map<String, Object>> getUsersByAviaIdId(Long aviaId, Long idFromToken) {
+
+        List<Flight> flights = flightRepository.findByAviaId(aviaId);
+        if (flights.isEmpty()) {
+            return List.of();
+        }
+
+        if (!Objects.equals(aviaId, idFromToken))
+            throw new IllegalArgumentException("User ID does not match");
+
+        List<Long> flightIds = flights.stream()
+                .map(Flight::getId)
+                .collect(Collectors.toList());
+
+        List<Order> orders = new ArrayList<>();
+        for (Long fid : flightIds) {
+            if (fid == null) continue;
+            List<Order> ordersForFlight = orderRepository.findByFlight_id(fid);
+            if (ordersForFlight != null && !ordersForFlight.isEmpty())
+                orders.addAll(ordersForFlight);
+        }
+
+        List<Long> userIds = orders.stream()
+                .map(Order::getClient_id)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<User> users = userRepository.findAllById(userIds);
+
+        List<Bonus> bonuses = bonusRepository.findByUserIdsAndAviaId(userIds, aviaId);
+        Map<Long, Long> bonusMap = bonuses.stream()
+                .collect(Collectors.toMap(Bonus::getClient_id, Bonus::getBonus_count));
+
+        return users.stream().map(user -> {
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", user.getId());
+            result.put("name", user.getName());
+            result.put("email", user.getEmail());
+            result.put("phoneNumber", user.getPhoneNumber());
+            result.put("bonus_count", bonusMap.getOrDefault(user.getId(), 0L));
+            return result;
+        }).collect(Collectors.toList());
+    }
+
 
     public UserDTO createUser(UserDTO userDTO) {
         if (userRepository.findByEmail(userDTO.getEmail()) != null) {
