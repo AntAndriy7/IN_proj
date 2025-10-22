@@ -1,0 +1,74 @@
+.airport-select__control {
+    width: 100%;
+}
+
+.airport-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.airport-city {
+    font-weight: 550;
+    font-size: 15px;
+    color: #fff;
+}
+
+.airport-name {
+    font-size: 12px;
+    color: #a8a8a8;
+}
+
+.airport-code {
+    font-weight: 500;
+    font-size: 12px;
+    color: #7c7c7c;
+    margin-left: 12px;
+}
+
+.airport-select__menu-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.airport-select__menu-list::-webkit-scrollbar-track {
+    background: #2a2a2a;
+    border-radius: 8px;
+}
+
+.airport-select__menu-list::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 8px;
+}
+
+.airport-select__menu-list::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+.react-select__control--is-disabled {
+    background-color: #3a3a3a !important;
+    color: #777 !important;
+    border: 1px solid #3a3a3a !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}
+
+.airport-select__control--is-disabled {
+    background-color: #3a3a3a !important;
+    border: none !important;
+    color: #777 !important;
+    opacity: 0.7;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+.airport-select__single-value--is-disabled {
+    color: #777 !important;
+}
+
+.airport-select__placeholder--is-disabled {
+    color: #777 !important;
+}
+
+.airport-select__indicators svg {
+    opacity: 0.6;
+}

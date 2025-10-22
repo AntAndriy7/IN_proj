@@ -1,0 +1,116 @@
+.map-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.map-container {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.refresh-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(18, 18, 18, 0.25);
+    border-radius: 15%;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #151515;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.refresh-button:hover {
+    background: rgba(237, 237, 237, 0.8);
+    color: #151515;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    font-size: 18px;
+    font-weight: 500;
+    backdrop-filter: blur(3px);
+}
+
+.leaflet-container {
+    height: 100% !important;
+    width: 100% !important;
+    background: #e8f4f8;
+}
+
+.leaflet-tile-container {
+    transform-origin: 0 0 !important;
+}
+
+.leaflet-tile {
+    max-width: none !important;
+    max-height: none !important;
+}
+
+.rotated-plane-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+.rotated-plane-icon div {
+    transition: transform 0.3s ease;
+}
+
+.rotated-plane-icon img {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.leaflet-popup-content {
+    font-family: 'Roboto', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+    .refresh-button {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .refresh-button svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .map-wrapper {
+        height: 400px;
+    }
+}

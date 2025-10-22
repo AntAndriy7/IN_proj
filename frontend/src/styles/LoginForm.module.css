@@ -1,0 +1,137 @@
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Roboto', sans-serif;
+    overflow: auto !important;
+}
+
+.container {
+    background: #eaeaea;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.form {
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    background: #FFF;
+    width: 320px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 720;
+    margin-bottom: 2rem;
+}
+
+.logoContainer {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+    border-radius: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.logoContainer:hover {
+    background: #f4f4f4;
+}
+
+.logo {
+    font-family: 'Jost', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.logo span {
+    display: block;
+    margin-left: 0.2em;
+    font-weight: normal;
+}
+
+.logo span::first-letter {
+    font-weight: bold;
+}
+
+.logoImage {
+    width: 80px;
+    height: 80px;
+    margin-left: 1rem;
+}
+
+.inputGroup {
+    margin-bottom: 1rem;
+}
+
+.inputGroup label {
+    display: block;
+    text-align: left;
+    color: #333;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.inputGroup input {
+    width: calc(100% - 1rem);
+    padding: 0.5rem;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    outline: none;
+}
+
+.inputGroup input:focus {
+    border-color: #007bff;
+}
+
+.button {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 30px;
+    border: none;
+    color: white;
+    background: linear-gradient(90deg, #151515 0%, #707070 33%, #707070 66%, #151515 100%);
+    background-size: 200%;
+    background-position: 0% 0;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.4s;
+    margin-top: 1rem;
+}
+
+.button:hover {
+    background-position: 100% 0;
+}
+
+.signUpPrompt {
+    margin-top: 1.5rem;
+    font-size: 0.8rem;
+}
+
+.signUpPrompt a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.error {
+    color: #d9534f;
+    font-size: 14px;
+    text-align: left;
+    margin-top: 0.25rem;
+}
