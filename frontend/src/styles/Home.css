@@ -209,10 +209,20 @@
     margin-bottom: 16px;
 }
 
+.error-message-nomar {
+    color: #ff2b2b;
+    font-weight: 600;
+}
+
 .plane-list {
     display: flex;
     flex-direction: column;
     gap: 24px;
+}
+
+.plane-list-flight {
+    display: flex;
+    flex-direction: column;
 }
 
 .user-info,
@@ -1249,13 +1259,15 @@ select:focus {
 
 .form-input:hover,
 .add-flight-card .airport-select:hover,
-.add-flight-card select:hover {
+.add-flight-card select:hover,
+.edit-field input:hover {
     background: #4a4a4a;
 }
 
 .form-input:focus,
 .add-flight-card .airport-select:focus,
-.add-flight-card select:focus {
+.add-flight-card select:focus,
+.edit-field input:focus {
     outline: none;
     box-shadow: 0 0 0 1px #ffdd2d;
     background: #404040;
@@ -1265,7 +1277,8 @@ select:focus {
     color: #878787;
 }
 
-.datetime-group {
+.datetime-group,
+.edit-datetime-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
@@ -1304,7 +1317,6 @@ select:focus {
 .btn-primary {
     background: #ffc42d;
     color: #151515;
-
 }
 
 .btn-primary:hover {
@@ -1352,8 +1364,97 @@ select:focus {
 
 .form-input[type="date"]::-webkit-calendar-picker-indicator,
 .form-input[type="time"]::-webkit-calendar-picker-indicator,
-.form-input-city[type="date"]::-webkit-calendar-picker-indicator {
+.form-input-city[type="date"]::-webkit-calendar-picker-indicator,
+.edit-field input[type="date"]::-webkit-calendar-picker-indicator,
+.edit-field input[type="time"]::-webkit-calendar-picker-indicator{
     filter: invert(73%) sepia(95%) saturate(600%) hue-rotate(1deg) brightness(1) contrast(1);
     opacity: 1;
     cursor: pointer;
+}
+
+.flight-edit-form {
+    max-width: 100%;
+}
+
+.first-edit-section {
+    padding: 0 0 20px 0;
+    border-bottom: 2px solid #333333;
+}
+
+.edit-section {
+    padding: 20px 0 20px 0;
+    border-bottom: 2px solid #333333;
+}
+
+.edit-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.edit-section-title {
+    font-size: 20px;
+    font-weight: 400;
+    color: #ffffff;
+    margin: 0 0 24px 0;
+}
+
+.edit-field {
+    max-width: 382px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.edit-field label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #a8a8a8;
+}
+
+.edit-field input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    background: #404040;
+    color: #ffffff;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+.edit-field input::placeholder {
+    color: #878787;
+}
+
+
+.edit-field input[type="number"]::-webkit-inner-spin-button,
+.edit-field input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.edit-field input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 16px;
+    margin: 40px 80px 0 80px;
+    border-top: 2px solid #2d2d2d;
+    justify-content: center;
+}
+
+.edit-actions button {
+    flex: 1;
+    padding: 10px 0;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Segoe UI', Roboto, sans-serif;
 }
