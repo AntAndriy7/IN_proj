@@ -156,7 +156,7 @@ function Cabinet() {
                         </div>
                     </div>
                 </div>
-                {activePage !== 'map' &&  <Layout></Layout>}
+                <Layout></Layout>
             </div>
         </div>
     );

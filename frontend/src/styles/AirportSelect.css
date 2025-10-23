@@ -70,5 +70,13 @@
 }
 
 .airport-select__indicators svg {
-    opacity: 0.6;
+    opacity: 0.8;
+}
+
+.airport-select__control {
+    transition: background-color 0.15s ease;
+}
+
+.airport-select__indicators {
+    cursor: pointer;
 }

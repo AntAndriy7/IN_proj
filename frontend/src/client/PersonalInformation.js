@@ -12,17 +12,22 @@ function PersonalInformation({ user }) {
     const [error, setError] = useState(null);
 
     const handleNameChange = (setter) => (e) => {
-        const value = e.target.value
+        let value = e.target.value
             .replace(/[^a-zA-Z' -]/g, '')
             .replace(/\s{2,}/g, ' ')
             .slice(0, 100)
             .toUpperCase();
+
+        if (value.startsWith(' ')) {
+            value = value.trimStart();
+        }
         setter(value);
     };
 
     const handleEmailChange = (e) => {
         const value = e.target.value
-            .replace(/\s/g, '')
+            .replace(/\s+/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
             .slice(0, 100);
         setUpdatedEmail(value);
     };

@@ -17,11 +17,48 @@ function SignUpAviaForm() {
     const [cpassError, setCpassError] = useState('');
     const navigate = useNavigate();
 
-    const handleEmailChange = (event) => setEmail(event.target.value);
-    const handlePasswordChange = (event) => setPassword(event.target.value);
-    const handleConfirmPasswordChange = (event) => setConfirmPassword(event.target.value);
-    const handleNameChange = (event) => setName(event.target.value);
-    const handlePhoneChange = (event) => setPhone(event.target.value);
+    const handleEmailChange = (e) => {
+        const value = e.target.value
+            .replace(/\s+/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .slice(0, 100);
+        setEmail(value);
+    };
+
+    const handlePasswordChange = (e) => {
+        const value = e.target.value
+            .replace(/\s/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .slice(0, 100);
+        setPassword(value);
+    };
+
+    const handleConfirmPasswordChange = (e) => {
+        const value = e.target.value
+            .replace(/\s/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .slice(0, 100);
+        setConfirmPassword(value);
+    };
+
+    const handleNameChange = (e) => {
+        let value = e.target.value
+            .replace(/\s+/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .slice(0, 100);
+
+        if (value.startsWith(' ')) {
+            value = value.trimStart();
+        }
+        setName(value);
+    };
+
+    const handlePhoneChange = (e) => {
+        const value = e.target.value
+            .replace(/[^\d+]/g, '')
+            .slice(0, 15);
+        setPhone(value);
+    };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -141,7 +178,7 @@ function SignUpAviaForm() {
                 <div className={styles.inputGroup}>
                     <label>Email</label>
                     <input
-                        type="email"
+                        type="text"
                         value={email}
                         onChange={handleEmailChange}
                         required

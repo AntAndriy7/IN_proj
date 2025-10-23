@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import AirportSelect from "./AirportSelect";
 import DateRangeInput from "./DateRangeInput";
 import "../styles/Home.css";
@@ -105,89 +105,45 @@ function FlightFilter({
                 <div className="info-section-filter">
                     <span className="label-filter">Price range</span>
                     <div className="price-inputs-row">
-                        <input
-                            type="number"
-                            placeholder="From"
-                            value={filter.priceMin}
-                            onChange={(e) => {
-                                const val = handlePriceInput(e.target.value, 5);
-                                setFilter(prev => {
-                                    const newFilter = { ...prev, priceMin: val };
-                                    if (onFilterChange) onFilterChange(newFilter);
-                                    return newFilter;
-                                });
-                            }}
-                            onKeyDown={(e) => {
-                                if (!/[0-9]/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
-                                    e.preventDefault();
-                                }
-                            }}
-                            onPaste={(e) => {
-                                const paste = e.clipboardData.getData('text');
-                                if (/\D/.test(paste)) e.preventDefault();
-                            }}
-                            className="form-input-price no-spinner"
-                            onBlur={() => {
-                                setFilter(prev => {
-                                    let priceMin = parseFloat(prev.priceMin);
-                                    let priceMax = parseFloat(prev.priceMax);
+                        <div className="price-input-wrapper">
+                            <input
+                                type="number"
+                                placeholder="From"
+                                value={filter.priceMin}
+                                onChange={(e) => {
+                                    const val = handlePriceInput(e.target.value, 5);
+                                    setFilter(prev => {
+                                        const newFilter = { ...prev, priceMin: val };
+                                        if (onFilterChange) onFilterChange(newFilter);
+                                        return newFilter;
+                                    });
+                                }}
+                                className="form-input-price no-spinner"
+                                disabled={disabled}
+                            />
+                            <span className="currency-symbol">₴</span>
+                        </div>
 
-                                    if (isNaN(priceMin)) priceMin = prev.priceMin;
-                                    if (isNaN(priceMax)) priceMax = prev.priceMax;
-
-                                    if (priceMin > priceMax) priceMax = priceMin;
-
-                                    return {
-                                        ...prev,
-                                        priceMin,
-                                        priceMax
-                                    };
-                                });
-                            }}
-                            disabled={disabled}
-                        />
                         <span className="price-separator">—</span>
-                        <input
-                            type="number"
-                            placeholder="To"
-                            value={filter.priceMax}
-                            onChange={(e) => {
-                                const val = handlePriceInput(e.target.value, 5);
-                                setFilter(prev => {
-                                    const newFilter = { ...prev, priceMax: val };
-                                    if (onFilterChange) onFilterChange(newFilter);
-                                    return newFilter;
-                                });
-                            }}
-                            onKeyDown={(e) => {
-                                if (!/[0-9]/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
-                                    e.preventDefault();
-                                }
-                            }}
-                            onPaste={(e) => {
-                                const paste = e.clipboardData.getData('text');
-                                if (/\D/.test(paste)) e.preventDefault();
-                            }}
-                            className="form-input-price no-spinner"
-                            onBlur={() => {
-                                setFilter(prev => {
-                                    let priceMin = parseFloat(prev.priceMin);
-                                    let priceMax = parseFloat(prev.priceMax);
 
-                                    if (isNaN(priceMin)) priceMin = prev.priceMin;
-                                    if (isNaN(priceMax)) priceMax = prev.priceMax;
-
-                                    if (priceMax < priceMin) priceMin = priceMax;
-
-                                    return {
-                                        ...prev,
-                                        priceMin,
-                                        priceMax
-                                    };
-                                });
-                            }}
-                            disabled={disabled}
-                        />
+                        <div className="price-input-wrapper">
+                            <input
+                                type="number"
+                                placeholder="To"
+                                value={filter.priceMax}
+                                onChange={(e) => {
+                                    const val = handlePriceInput(e.target.value, 5);
+                                    setFilter(prev => {
+                                        const newFilter = { ...prev, priceMax: val };
+                                        if (onFilterChange) onFilterChange(newFilter);
+                                        return newFilter;
+                                    });
+                                }}
+                                className="form-input-price no-spinner"
+                                disabled={disabled}
+                            />
+                            <span className="currency-symbol">₴</span>
+                        </div>
                     </div>
                 </div>
 

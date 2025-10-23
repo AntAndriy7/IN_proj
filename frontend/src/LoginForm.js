@@ -9,15 +9,24 @@ function LoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fillError, setFillError] = useState('');
+    const [passError, setPassError] = useState('');
     const [emailError, setEmailError] = useState('');
     const navigate = useNavigate();
 
-    const handleEmailChange = (event) => {
-        setEmail(event.target.value);
+    const handleEmailChange = (e) => {
+        const value = e.target.value
+            .replace(/\s+/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .slice(0, 100);
+        setEmail(value);
     };
 
-    const handlePasswordChange = (event) => {
-        setPassword(event.target.value);
+    const handlePasswordChange = (e) => {
+        const value = e.target.value
+            .replace(/\s/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .slice(0, 100);
+        setPassword(value);
     };
 
     const handleSubmit = (event) => {
@@ -25,6 +34,7 @@ function LoginForm() {
 
         setFillError('');
         setEmailError('');
+        setPassError('');
 
         if (email === '' || password === '') {
             setFillError('Please fill in all fields.');
@@ -34,6 +44,12 @@ function LoginForm() {
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailPattern.test(email)) {
             setEmailError('Please enter a valid email address.');
+            return;
+        }
+
+        const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z]).{6,}$/;
+        if (!passwordPattern.test(password)) {
+            setPassError('Password must be at least 6 characters long, containing at least one uppercase and one lowercase letter.');
             return;
         }
 
@@ -103,7 +119,7 @@ function LoginForm() {
                 <div className={styles.inputGroup}>
                     <label>Email</label>
                     <input
-                        type="email"
+                        type="text"
                         value={email}
                         onChange={handleEmailChange}
                         required
@@ -118,6 +134,7 @@ function LoginForm() {
                         onChange={handlePasswordChange}
                         required
                     />
+                    {passError && <p className={styles.error}>{passError}</p>}
                 </div>
                 {fillError && <p className={styles.error}>{fillError}</p>}
                 <button type="submit" className={styles.button} onClick={handleSubmit}>Login</button>

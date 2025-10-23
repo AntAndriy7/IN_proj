@@ -113,6 +113,8 @@
     outline: none;
     width: 100%;
     box-sizing: border-box;
+    box-shadow: 0 0 0 1px transparent;
+    transition: box-shadow 0.1s;
 }
 
 .form-input-personal::placeholder,
@@ -169,6 +171,26 @@
     flex: 1;
 }
 
+.price-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.currency-symbol {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ccc;
+    font-size: 18px;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+.form-input-price {
+    padding-right: 26px;
+}
+
 .add-button,
 .clear-button {
     background-color: #fff;
@@ -209,20 +231,10 @@
     margin-bottom: 16px;
 }
 
-.error-message-nomar {
-    color: #ff2b2b;
-    font-weight: 600;
-}
-
 .plane-list {
     display: flex;
     flex-direction: column;
     gap: 24px;
-}
-
-.plane-list-flight {
-    display: flex;
-    flex-direction: column;
 }
 
 .user-info,
@@ -1317,6 +1329,7 @@ select:focus {
 .btn-primary {
     background: #ffc42d;
     color: #151515;
+
 }
 
 .btn-primary:hover {
@@ -1366,10 +1379,22 @@ select:focus {
 .form-input[type="time"]::-webkit-calendar-picker-indicator,
 .form-input-city[type="date"]::-webkit-calendar-picker-indicator,
 .edit-field input[type="date"]::-webkit-calendar-picker-indicator,
-.edit-field input[type="time"]::-webkit-calendar-picker-indicator{
+.edit-field input[type="time"]::-webkit-calendar-picker-indicator {
     filter: invert(73%) sepia(95%) saturate(600%) hue-rotate(1deg) brightness(1) contrast(1);
     opacity: 1;
     cursor: pointer;
+}
+
+
+
+.error-message-nomar {
+    color: #ff2b2b;
+    font-weight: 600;
+}
+
+.plane-list-flight {
+    display: flex;
+    flex-direction: column;
 }
 
 .flight-edit-form {
