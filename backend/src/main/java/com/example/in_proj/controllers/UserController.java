@@ -54,7 +54,7 @@ public class UserController {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("message", "No customers were found on the airline with '"
                         + JwtUtil.getId(token) + "' on the flight with ID '" + flightId + "'.");
-                ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
             }
 
             return ResponseEntity.ok(users);
@@ -76,7 +76,7 @@ public class UserController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("message", "No customers were found on the airline with '"
                     + JwtUtil.getId(token) + "'.");
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
 
         return ResponseEntity.ok(users);
@@ -89,7 +89,7 @@ public class UserController {
         if (inactiveUsers.isEmpty()) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("message", "No inactive clients found.");
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
 
         return ResponseEntity.ok(inactiveUsers);

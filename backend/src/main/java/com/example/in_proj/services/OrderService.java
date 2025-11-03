@@ -46,7 +46,7 @@ public class OrderService {
         return combined;
     }
 
-    public OrderDTO addOrder(OrderDTO orderDTO, List<String> names, long usedBonuses) {
+    public OrderDTO addOrder(Long clientId, OrderDTO orderDTO, List<String> names, long usedBonuses) {
         // Валідація списку імен
         if (names == null || names.isEmpty()) {
             throw new IllegalArgumentException("Name list cannot be empty.");
@@ -67,15 +67,10 @@ public class OrderService {
                 throw new IllegalArgumentException("Bonus not found!");
             } else if (bonus.getBonus_count() < usedBonuses) {
                 throw new IllegalArgumentException("The bonuses used are not valid!");
-            } else if (flight.getTicket_price() * names.size() - usedBonuses != orderDTO.getTotal_price()) {
-                throw new IllegalArgumentException("The order itself is not valid!");
             }
 
             bonus.setBonus_count(bonus.getBonus_count() - usedBonuses);
             bonusRepository.save(bonus);
-        } else {
-            if (flight.getTicket_price() * orderDTO.getTicket_quantity() != orderDTO.getTotal_price())
-                throw new IllegalArgumentException("Error processing order price.");
         }
 
         // Перевіряємо наявність достатньої кількості місць
@@ -84,6 +79,11 @@ public class OrderService {
         if (availableSeats < names.size()) {
             throw new IllegalArgumentException("Not enough seats available.");
         }
+
+        //TODO Додати перевірки та валідацію
+        orderDTO.setClient_id(clientId);
+        orderDTO.setTicket_quantity(names.size());
+        orderDTO.setTotal_price(flight.getTicket_price() * names.size() - usedBonuses);
 
         // Створюємо замовлення
         Order order = mapper.toEntity(orderDTO);
@@ -132,31 +132,40 @@ public class OrderService {
     }
 
     public OrderDTO updateOrder(Long id, OrderDTO orderDTO, Long idFromToken) {
-        return orderRepository.findById(id).map(existingOrder -> {
-            if (!Objects.equals(existingOrder.getClient_id(), idFromToken))
-                throw new IllegalArgumentException("User ID does not match");
-            if (orderDTO.getClient_id() != 0) {
-                existingOrder.setClient_id(orderDTO.getClient_id());
+        Order existingOrder = orderRepository.findById(id).orElse(null);
+        if (existingOrder == null) {
+            return null;
+        }
+
+        if (!Objects.equals(existingOrder.getClient_id(), idFromToken)) {
+            throw new IllegalArgumentException("User ID does not match");
+        }
+
+        if (orderDTO.getClient_id() != 0) {
+            existingOrder.setClient_id(orderDTO.getClient_id());
+        }
+        if (orderDTO.getFlight_id() != 0) {
+            existingOrder.setFlight_id(orderDTO.getFlight_id());
+        }
+        if (orderDTO.getTicket_quantity() != 0) {
+            existingOrder.setTicket_quantity(orderDTO.getTicket_quantity());
+        }
+        if (orderDTO.getTotal_price() != 0) {
+            existingOrder.setTotal_price(orderDTO.getTotal_price());
+        }
+        if (orderDTO.getPayment_status() != null) {
+            if ("canceled".equals(orderDTO.getPayment_status())) {
+                processOrder(existingOrder, 2);
+            } else {
+                existingOrder.setPayment_status(orderDTO.getPayment_status());
             }
-            if (orderDTO.getFlight_id() != 0) {
-                existingOrder.setFlight_id(orderDTO.getFlight_id());
-            }
-            if (orderDTO.getTicket_quantity() != 0) {
-                existingOrder.setTicket_quantity(orderDTO.getTicket_quantity());
-            }
-            if (orderDTO.getTotal_price() != 0) {
-                existingOrder.setTotal_price(orderDTO.getTotal_price());
-            }
-            if (orderDTO.getPayment_status() != null) {
-                if ("canceled".equals(orderDTO.getPayment_status())) {
-                    processOrder(existingOrder, 2);
-                } else {
-                    existingOrder.setPayment_status(orderDTO.getPayment_status());
-                }
-            }
-            return mapper.toDTO(orderRepository.save(existingOrder));
-        }).orElse(null);
+        }
+
+        orderRepository.save(existingOrder);
+
+        return mapper.toDTO(existingOrder);
     }
+
 
     public void processOrder(Order order, int divider) {
         Long userId = order.getClient_id();
