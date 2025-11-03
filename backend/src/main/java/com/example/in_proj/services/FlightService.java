@@ -189,6 +189,17 @@ public class FlightService {
     public FlightDTO createFlight(FlightDTO flightDTO, Long userIdFromToken) {
         flightDTO.setAvia_id(userIdFromToken);
 
+        Long departureId = flightDTO.getDeparture_id();
+        Long destinationId = flightDTO.getDestination_id();
+
+        if (Objects.equals(departureId, destinationId)) {
+            throw new IllegalArgumentException("Departure and destination airports cannot be the same.");
+        }
+
+        if (departureId != 1 && destinationId != 1) {
+            throw new IllegalArgumentException("Either departure or destination airport must have ID = 1.");
+        }
+
         LocalDate departureDate = flightDTO.getDeparture_date().toLocalDate();
         LocalDate arrivalDate = flightDTO.getArrival_date().toLocalDate();
         LocalTime departureTime = flightDTO.getDeparture_time().toLocalTime();
@@ -198,18 +209,15 @@ public class FlightService {
         LocalDateTime arrivalDateTime = LocalDateTime.of(arrivalDate, arrivalTime);
         LocalDateTime now = LocalDateTime.now();
 
+        flightValidation(flightDTO.getTicket_price(), departureDateTime, arrivalDateTime);
+
         LocalDateTime minAllowedDeparture = now.plusHours(24);
         if (departureDateTime.isBefore(minAllowedDeparture)) {
             throw new IllegalArgumentException("Departure date/time cannot be earlier than 24 hours from now");
         }
 
-        if (arrivalDateTime.isBefore(departureDateTime)) {
-            throw new IllegalArgumentException("Arrival date/time cannot be before departure date/time");
-        }
-
-        Duration flightDuration = Duration.between(departureDateTime, arrivalDateTime);
-        if (flightDuration.toHours() > 24) {
-            throw new IllegalArgumentException("Flight duration cannot exceed 24 hours");
+        if (departureDate.isAfter(now.toLocalDate().plusYears(1))) {
+            throw new IllegalArgumentException("Departure date cannot be more than 1 year in the future.");
         }
 
         Flight flight = mapper.toEntity(flightDTO);
@@ -232,16 +240,34 @@ public class FlightService {
             throw new IllegalArgumentException("User ID does not match");
         }
 
-        if (flightDTO.getAvia_id() != 0) existingFlight.setAvia_id(flightDTO.getAvia_id());
-        if (flightDTO.getPlane_id() != 0) existingFlight.setPlane_id(flightDTO.getPlane_id());
-        if (flightDTO.getDeparture_id() != 0) existingFlight.setDeparture_id(flightDTO.getDeparture_id());
-        if (flightDTO.getDestination_id() != 0) existingFlight.setDestination_id(flightDTO.getDestination_id());
+        LocalDate departureDate = flightDTO.getDeparture_date().toLocalDate();
+        LocalDate arrivalDate = flightDTO.getArrival_date().toLocalDate();
+        LocalTime departureTime = flightDTO.getDeparture_time().toLocalTime();
+        LocalTime arrivalTime = flightDTO.getArrival_time().toLocalTime();
+
+        LocalDateTime departureDateTime = LocalDateTime.of(departureDate, departureTime);
+        LocalDateTime arrivalDateTime = LocalDateTime.of(arrivalDate, arrivalTime);
+
+        flightValidation(flightDTO.getTicket_price(), departureDateTime, arrivalDateTime);
+
+        LocalDate oldDepartureDate = existingFlight.getDeparture_date().toLocalDate();
+        LocalTime oldDepartureTime = existingFlight.getDeparture_time().toLocalTime();
+        LocalDateTime oldDepartureDateTime = LocalDateTime.of(oldDepartureDate, oldDepartureTime);
+
+        if (departureDateTime.isBefore(oldDepartureDateTime)) {
+            throw new IllegalArgumentException("New departure date/time cannot be earlier than the original one.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (departureDate.isAfter(now.toLocalDate().plusYears(1))) {
+            throw new IllegalArgumentException("Departure date cannot be more than 1 year in the future.");
+        }
+
         if (flightDTO.getDeparture_time() != null) existingFlight.setDeparture_time(flightDTO.getDeparture_time());
         if (flightDTO.getArrival_time() != null) existingFlight.setArrival_time(flightDTO.getArrival_time());
         if (flightDTO.getDeparture_date() != null) existingFlight.setDeparture_date(flightDTO.getDeparture_date());
         if (flightDTO.getArrival_date() != null) existingFlight.setArrival_date(flightDTO.getArrival_date());
         if (flightDTO.getTicket_price() != 0) existingFlight.setTicket_price(flightDTO.getTicket_price());
-        if (flightDTO.getOccupied_seats() != 0) existingFlight.setOccupied_seats(flightDTO.getOccupied_seats());
 
         flightRepository.save(existingFlight);
 
@@ -312,5 +338,24 @@ public class FlightService {
         response.put("message", "Flight with ID '" + existingFlight.getId() + "' successfully deactivated");
 
         return response;
+    }
+
+    private void flightValidation (Long ticketPrice, LocalDateTime departureDateTime, LocalDateTime arrivalDateTime) {
+        if (ticketPrice < 50 || ticketPrice > 99999) {
+            throw new IllegalArgumentException("Ticket price must be between 50 and 99999.");
+        }
+
+        if (arrivalDateTime.isBefore(departureDateTime)) {
+            throw new IllegalArgumentException("Arrival date/time cannot be before departure date/time");
+        }
+
+        Duration flightDuration = Duration.between(departureDateTime, arrivalDateTime);
+        if (flightDuration.toHours() > 24) {
+            throw new IllegalArgumentException("Flight duration cannot exceed 24 hours");
+        }
+
+        if (flightDuration.toMinutes() < 30) {
+            throw new IllegalArgumentException("Flight duration must be at least 30 minutes.");
+        }
     }
 }

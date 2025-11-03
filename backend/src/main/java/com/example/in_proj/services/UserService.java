@@ -51,6 +51,9 @@ public class UserService {
     }
 
     public boolean authenticate(AuthDTO loginDTO) {
+        emailValidation(loginDTO.getEmail());
+        passwordValidation(loginDTO.getPassword());
+
         User user = userRepository.findByEmail(loginDTO.getEmail());
         if (user != null) {
             return passwordEncoder.matches(loginDTO.getPassword(), user.getPassword());
@@ -74,13 +77,13 @@ public class UserService {
             userData.put("email", user.getEmail());
             userData.put("phoneNumber", user.getPhoneNumber());
             userData.put("recentActivity", user.getRecentActivity());
+            userData.put("role", user.getRole());
 
             results.add(userData);
         }
 
         return results;
     }
-
 
     public List<Map<String, Object>> getUsersByFlightId(Long flightId, Long idFromToken) {
         Flight flight = flightRepository.findById(flightId).orElse(null);
@@ -177,34 +180,39 @@ public class UserService {
         return response;
     }
 
-
     public Map<String, Object> createUser(UserDTO userDTO) {
-        if (userRepository.findByEmail(userDTO.getEmail()) != null) {
+        nameValidation(userDTO.getName());
+        emailValidation(userDTO.getEmail());
+        phoneNumberValidation(userDTO.getPhoneNumber());
+        passwordValidation(userDTO.getPassword());
+
+        if (containsHtml(userDTO.getRole())) {
+            throw new IllegalArgumentException("Role cannot contain HTML tags.");
+        }
+
+        if (userRepository.findByEmail(userDTO.getEmail()) != null)
             throw new IllegalArgumentException("A user with this email address already exists!");
-        }
-        if (userRepository.findByPhoneNumber(userDTO.getPhoneNumber()) != null) {
+        if (userRepository.findByPhoneNumber(userDTO.getPhoneNumber()) != null)
             throw new IllegalArgumentException("A user with this phone number already exists!");
-        }
 
         switch (userDTO.getRole()) {
             case "CLIENT":
-                userDTO.setRole("CLIENT");
-                break;
             case "AVIA-temp":
-                userDTO.setRole("AVIA-temp");
                 break;
             default:
                 throw new IllegalArgumentException("Invalid role!");
         }
 
         String encodedPassword = passwordEncoder.encode(userDTO.getPassword());
-        userDTO.setPassword(encodedPassword);
 
+        userDTO.setName(userDTO.getName());
+        userDTO.setEmail(userDTO.getEmail());
+        userDTO.setPhoneNumber(userDTO.getPhoneNumber());
+        userDTO.setPassword(encodedPassword);
         userDTO.setRecentActivity(new Date(System.currentTimeMillis()));
 
         User user = mapper.toEntity(userDTO);
         user = userRepository.save(user);
-        mapper.toDTO(user);
 
         String token = JwtUtil.generate(user.getEmail(), user.getRole(), user.getName(), Math.toIntExact(user.getId()));
 
@@ -223,6 +231,19 @@ public class UserService {
     }
 
     public Map<String, Object> updateUser(Long id, UserDTO userDTO) {
+        if (userDTO.getName() != null) {
+            nameValidation(userDTO.getName());
+        }
+        if (userDTO.getEmail() != null) {
+            emailValidation(userDTO.getEmail());
+        }
+        if (userDTO.getPhoneNumber() != null) {
+            phoneNumberValidation(userDTO.getPhoneNumber());
+        }
+        if (userDTO.getPassword() != null) {
+            passwordValidation(userDTO.getPassword());
+        }
+
         User existingUser = userRepository.findById(id).orElse(null);
         Map<String, Object> response = new HashMap<>();
 
@@ -231,10 +252,10 @@ public class UserService {
             return response;
         }
 
-        if (userRepository.findByEmail(userDTO.getEmail()) != null) {
+        if (userRepository.findByEmail(userDTO.getEmail()) != null && !existingUser.getEmail().equals(userDTO.getEmail())) {
             throw new IllegalArgumentException("A user with this email address already exists!");
         }
-        if (userRepository.findByPhoneNumber(userDTO.getPhoneNumber()) != null) {
+        if (userRepository.findByPhoneNumber(userDTO.getPhoneNumber()) != null && !existingUser.getPhoneNumber().equals(userDTO.getPhoneNumber())) {
             throw new IllegalArgumentException("A user with this phone number already exists!");
         }
 
@@ -299,5 +320,57 @@ public class UserService {
         response.put("message", "User '" + existingUser.getEmail() + "' successfully deactivated");
 
         return response;
+    }
+
+    private boolean containsHtml(String input) {
+        return input != null && input.matches(".*<[^>]+>.*");
+    }
+
+    private void nameValidation(String name) {
+        if (containsHtml(name)) {
+            throw new IllegalArgumentException("Name cannot contain HTML tags.");
+        }
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("Name cannot be empty");
+        if (name.length() > 201)
+            throw new IllegalArgumentException("Name cannot exceed 201 characters");
+    }
+
+    private void emailValidation(String email) {
+        if (containsHtml(email)) {
+            throw new IllegalArgumentException("Email cannot contain HTML tags.");
+        }
+        if (email == null || email.isBlank())
+            throw new IllegalArgumentException("Email cannot be empty");
+        if (email.length() > 100)
+            throw new IllegalArgumentException("Email cannot exceed 100 characters");
+        if (email.contains(" "))
+            throw new IllegalArgumentException("Email cannot contain spaces");
+        if (!email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))
+            throw new IllegalArgumentException("Invalid email format");
+    }
+
+    private void phoneNumberValidation(String phoneNumber) {
+        if (containsHtml(phoneNumber)) {
+            throw new IllegalArgumentException("Phone number cannot contain HTML tags.");
+        }
+        if (phoneNumber == null || phoneNumber.isBlank())
+            throw new IllegalArgumentException("Phone number cannot be empty");
+        if (phoneNumber.length() > 15)
+            throw new IllegalArgumentException("Phone number cannot exceed 15 characters");
+        if (!phoneNumber.matches("^\\+?[0-9]+$"))
+            throw new IllegalArgumentException("Phone number can contain only digits and '+'");
+    }
+
+    private void passwordValidation(String password) {
+        if (containsHtml(password)) {
+            throw new IllegalArgumentException("Password cannot contain HTML tags.");
+        }
+        if (password == null || password.isBlank())
+            throw new IllegalArgumentException("Password cannot be empty");
+        if (password.length() < 6 || password.length() > 100)
+            throw new IllegalArgumentException("Password must be 6–100 characters long");
+        if (!password.matches("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)[A-Za-z\\d!@#$%^&*()_+\\-=<>?]{6,100}$"))
+            throw new IllegalArgumentException("Password must contain uppercase, lowercase, and a digit");
     }
 }

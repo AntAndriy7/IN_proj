@@ -35,6 +35,19 @@ public class AirportService {
         String code = airportDTO.getCode();
         String country = airportDTO.getCountry();
 
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Airport name cannot be empty.");
+        }
+        if (city == null || city.isBlank()) {
+            throw new IllegalArgumentException("City name cannot be empty.");
+        }
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Airport code cannot be empty.");
+        }
+        if (country == null || country.isBlank()) {
+            throw new IllegalArgumentException("Country name cannot be empty.");
+        }
+
         if (containsHtml(name)) {
             throw new IllegalArgumentException("Airport name cannot contain HTML tags.");
         }

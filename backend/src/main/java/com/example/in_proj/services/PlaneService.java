@@ -87,6 +87,10 @@ public class PlaneService {
         String model = planeDTO.getModel();
         Long seats_number = planeDTO.getSeats_number();
 
+        if(model == null || model.isBlank()) {
+            throw new IllegalArgumentException("Model name cannot be empty.");
+        }
+
         if (containsHtml(model)) {
             throw new IllegalArgumentException("Model name cannot contain HTML tags.");
         }
