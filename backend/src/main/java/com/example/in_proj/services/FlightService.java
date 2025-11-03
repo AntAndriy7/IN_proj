@@ -9,6 +9,7 @@ import com.example.in_proj.repository.BonusRepository;
 import com.example.in_proj.repository.OrderRepository;
 import com.example.in_proj.repository.FlightRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.sql.Date;
@@ -29,20 +30,6 @@ public class FlightService {
     private final OrderRepository orderRepository;
     private final BonusRepository bonusRepository;
     private final FlightMapper mapper = FlightMapper.INSTANCE;
-
-    public List<FlightDTO> getAllFlights(Set<Long> flightIds) {
-        List<Flight> flights;
-
-        if (flightIds == null || flightIds.isEmpty()) {
-            flights = flightRepository.findAll(); // повертаємо всі літаки
-        } else {
-            flights = flightRepository.findAllById(flightIds); // літаки за ID
-        }
-
-        return flights.stream()
-                .map(mapper::toDTO)
-                .collect(Collectors.toList());
-    }
 
     public List<Map<String, Object>> getAvia(Set<Long> aviaIds) {
         return aviaIds.stream()
@@ -81,18 +68,22 @@ public class FlightService {
                     minimalAirport.put("name", airport.getName());
                     minimalAirport.put("city", airport.getCity());
                     minimalAirport.put("code", airport.getCode());
+                    minimalAirport.put("country", airport.getCountry());
                     return minimalAirport;
                 })
                 .collect(Collectors.toList());
     }
 
-
-
-    public List<List<?>> getAllFlightsCombined() {
+    public List<List<?>> getAllFlightsCombined(Set<Long> flightIds) {
         checkAndUpdateFlightStatuses();
 
-        List<Flight> flights = flightRepository.findAll();
-        List<FlightDTO> flightDTOs = getAllFlights(null);
+        List<Flight> flights = flightIds == null ?
+                flightRepository.findAll() :
+                flightRepository.findAllById(flightIds);
+
+        List<FlightDTO> flightDTOs = flights.stream()
+                .map(mapper::toDTO)
+                .collect(Collectors.toList());
 
         Set<Long> aviaIds = flights.stream()
                 .map(Flight::getAvia_id)
@@ -106,13 +97,13 @@ public class FlightService {
                 .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
                 .collect(Collectors.toSet());
 
-        List<Map<String, Object>> users = getAvia(aviaIds);
+        List<Map<String, Object>> airlines = getAvia(aviaIds);
         List<Map<String, Object>> planes = getPlanes(planeIds);
         List<Map<String, Object>> airports = getAirports(airportIds);
 
         List<List<?>> combined = new ArrayList<>();
         combined.add(flightDTOs);
-        combined.add(users);
+        combined.add(airlines);
         combined.add(planes);
         combined.add(airports);
 
@@ -195,11 +186,8 @@ public class FlightService {
         return combined;
     }
 
-
     public FlightDTO createFlight(FlightDTO flightDTO, Long userIdFromToken) {
-        if (!Objects.equals(flightDTO.getAvia_id(), userIdFromToken)) {
-            throw new IllegalArgumentException("User ID does not match avia_id");
-        }
+        flightDTO.setAvia_id(userIdFromToken);
 
         LocalDate departureDate = flightDTO.getDeparture_date().toLocalDate();
         LocalDate arrivalDate = flightDTO.getArrival_date().toLocalDate();
@@ -234,91 +222,95 @@ public class FlightService {
     }
 
     public FlightDTO updateFlight(Long id, FlightDTO flightDTO, Long idFromToken, String roleFromToken) {
-        return flightRepository.findById(id).map(existingFlight -> {
-            if (!Objects.equals(existingFlight.getAvia_id(), idFromToken) && Objects.equals("AVIA", roleFromToken))
-                throw new IllegalArgumentException("User ID does not match");
-            if (flightDTO.getAvia_id() != 0) {
-                existingFlight.setAvia_id(flightDTO.getAvia_id());
-            }
-            if (flightDTO.getPlane_id() != 0) {
-                existingFlight.setPlane_id(flightDTO.getPlane_id());
-            }
-            if (flightDTO.getDeparture_id() != 0) {
-                existingFlight.setDeparture_id(flightDTO.getDeparture_id());
-            }
-            if (flightDTO.getDestination_id() != 0) {
-                existingFlight.setDestination_id(flightDTO.getDestination_id());
-            }
-            if (flightDTO.getDeparture_time() != null) {
-                existingFlight.setDeparture_time(flightDTO.getDeparture_time());
-            }
-            if (flightDTO.getArrival_time() != null) {
-                existingFlight.setArrival_time(flightDTO.getArrival_time());
-            }
-            if (flightDTO.getDeparture_date() != null) {
-                existingFlight.setDeparture_date(flightDTO.getDeparture_date());
-            }
-            if (flightDTO.getArrival_date() != null) {
-                existingFlight.setArrival_date(flightDTO.getArrival_date());
-            }
-            if (flightDTO.getTicket_price() != 0) {
-                existingFlight.setTicket_price(flightDTO.getTicket_price());
-            }
-            if (flightDTO.getOccupied_seats() != 0) {
-                existingFlight.setOccupied_seats(flightDTO.getOccupied_seats());
-            }
-            flightRepository.save(existingFlight);
-            return mapper.toDTO(existingFlight);
-        }).orElse(null);
+        Flight existingFlight = flightRepository.findById(id).orElse(null);
+
+        if (existingFlight == null) {
+            return null;
+        }
+
+        if (!Objects.equals(existingFlight.getAvia_id(), idFromToken) && !"ADMIN".equals(roleFromToken)) {
+            throw new IllegalArgumentException("User ID does not match");
+        }
+
+        if (flightDTO.getAvia_id() != 0) existingFlight.setAvia_id(flightDTO.getAvia_id());
+        if (flightDTO.getPlane_id() != 0) existingFlight.setPlane_id(flightDTO.getPlane_id());
+        if (flightDTO.getDeparture_id() != 0) existingFlight.setDeparture_id(flightDTO.getDeparture_id());
+        if (flightDTO.getDestination_id() != 0) existingFlight.setDestination_id(flightDTO.getDestination_id());
+        if (flightDTO.getDeparture_time() != null) existingFlight.setDeparture_time(flightDTO.getDeparture_time());
+        if (flightDTO.getArrival_time() != null) existingFlight.setArrival_time(flightDTO.getArrival_time());
+        if (flightDTO.getDeparture_date() != null) existingFlight.setDeparture_date(flightDTO.getDeparture_date());
+        if (flightDTO.getArrival_date() != null) existingFlight.setArrival_date(flightDTO.getArrival_date());
+        if (flightDTO.getTicket_price() != 0) existingFlight.setTicket_price(flightDTO.getTicket_price());
+        if (flightDTO.getOccupied_seats() != 0) existingFlight.setOccupied_seats(flightDTO.getOccupied_seats());
+
+        flightRepository.save(existingFlight);
+
+        return mapper.toDTO(existingFlight);
     }
 
-    public FlightDTO statusFlight(Long id, Long idFromToken, String roleFromToken) {
-        return flightRepository.findById(id).map(existingFlight -> {
-            if (!Objects.equals(existingFlight.getAvia_id(), idFromToken) && Objects.equals("AVIA", roleFromToken))
-                throw new IllegalArgumentException("User ID does not match");
+    public Map<String, Object> statusFlight(Long id, Long idFromToken, String roleFromToken) {
+        Flight existingFlight = flightRepository.findById(id).orElse(null);
+        Map<String, Object> response = new HashMap<>();
 
-            // Змінюємо статус літака
-            existingFlight.setStatus(false);
-            flightRepository.save(existingFlight);
+        if (existingFlight == null) {
+            response.put("status", HttpStatus.NOT_FOUND.value());
+            response.put("message", "No flight found with ID '" + id + "'.");
+            return response;
+        } else if (!existingFlight.isStatus()) {
+            response.put("status", HttpStatus.BAD_REQUEST.value());
+            response.put("message", "Flight with ID '" + existingFlight.getId() + "' already deactivated");
+            return response;
+        }
 
-            // Отримуємо список замовлень по літаку
-            List<Order> orders = orderRepository.findByFlight_id(id);
+        if (!Objects.equals(existingFlight.getAvia_id(), idFromToken) && Objects.equals("AVIA", roleFromToken))
+            throw new IllegalArgumentException("User ID does not match");
 
-            for (Order order : orders) {
-                // Якщо замовлення зі статусом "paid"
-                if ("paid".equals(order.getPayment_status())) {
-                    Long userId = order.getClient_id();
-                    Long flightId = order.getFlight_id();
+        // Змінюємо статус літака
+        existingFlight.setStatus(false);
+        flightRepository.save(existingFlight);
 
-                    // Знаходимо літак за flightId
-                    Flight flight = flightRepository.findById(flightId)
-                            .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + flightId));
+        // Отримуємо список замовлень по літаку
+        List<Order> orders = orderRepository.findByFlight_id(id);
 
-                    // Отримуємо avia_id із літака
-                    Long aviaId = flight.getAvia_id();
+        for (Order order : orders) {
+            // Якщо замовлення зі статусом "paid"
+            if ("paid".equals(order.getPayment_status())) {
+                Long userId = order.getClient_id();
+                Long flightId = order.getFlight_id();
 
-                    // Розраховуємо бонус
-                    long bonusAmount = order.getTotal_price();
+                // Знаходимо літак за flightId
+                Flight flight = flightRepository.findById(flightId)
+                        .orElseThrow(() -> new IllegalArgumentException("Flight not found with ID: " + flightId));
 
-                    // Знаходимо або створюємо запис у Bonus
-                    Bonus bonus = bonusRepository.findByUserIdAndAviaId(userId, aviaId);
-                    if (bonus == null) {
-                        bonus = new Bonus();
-                        bonus.setClient_id(userId);
-                        bonus.setAvia_id(aviaId);
-                        bonus.setBonus_count(bonusAmount);
-                    } else {
-                        bonus.setBonus_count(bonus.getBonus_count() + bonusAmount);
-                    }
-                    bonusRepository.save(bonus);
+                // Отримуємо avia_id із літака
+                Long aviaId = flight.getAvia_id();
+
+                // Розраховуємо бонус
+                long bonusAmount = order.getTotal_price();
+
+                // Знаходимо або створюємо запис у Bonus
+                Bonus bonus = bonusRepository.findByUserIdAndAviaId(userId, aviaId);
+                if (bonus == null) {
+                    bonus = new Bonus();
+                    bonus.setClient_id(userId);
+                    bonus.setAvia_id(aviaId);
+                    bonus.setBonus_count(bonusAmount);
+                } else {
+                    bonus.setBonus_count(bonus.getBonus_count() + bonusAmount);
                 }
-
-                // Змінюємо статус замовлення на "canceled"
-                order.setPayment_status("canceled");
-                orderRepository.save(order);
+                bonusRepository.save(bonus);
             }
 
-            return mapper.toDTO(existingFlight);
-        }).orElse(null);
+            // Змінюємо статус замовлення на "canceled"
+            order.setPayment_status("canceled");
+            orderRepository.save(order);
+        }
+
+        mapper.toDTO(existingFlight);
+
+        response.put("status", HttpStatus.OK.value());
+        response.put("message", "Flight with ID '" + existingFlight.getId() + "' successfully deactivated");
+
+        return response;
     }
 }

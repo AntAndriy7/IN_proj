@@ -4,10 +4,13 @@ import com.example.in_proj.dto.FlightDTO;
 import com.example.in_proj.services.FlightService;
 import com.example.in_proj.auth.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping(value = "/api/flight")
@@ -17,60 +20,97 @@ public class FlightController {
     private final FlightService flightService;
 
     @GetMapping
-    public ResponseEntity<List<List<?>>> getAllFlights() {
-        List<List<?>> result = flightService.getAllFlightsCombined();
-        return result.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(result);
+    public ResponseEntity<?> getAllFlights() {
+        List<List<?>> result = flightService.getAllFlightsCombined(null);
+
+        if (result.stream().allMatch(List::isEmpty)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "No flights found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/status")
-    public ResponseEntity<List<List<?>>> getFlightsWithUsers() {
+    public ResponseEntity<?> getFlightsWithUsers() {
         List<List<?>> result = flightService.getFlightsByStatus();
-        return result.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(result);
+
+        if (result.stream().allMatch(List::isEmpty)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "No active flights found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/avia/{aviaId}")
-    public ResponseEntity<List<List<?>>> getFlightsByAviaId(@PathVariable Long aviaId) {
-        List<List<?>> result = flightService.getFlightsByAviaId(aviaId);
-        return result.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(result);
+    @GetMapping("/avia")
+    public ResponseEntity<?> getFlightsByAviaId(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+
+        List<List<?>> result = flightService.getFlightsByAviaId(JwtUtil.getId(token));
+
+        if (result.stream().allMatch(List::isEmpty)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "No active flights found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping
     public ResponseEntity<?> createFlight(@RequestBody FlightDTO flightDTO,
-                                                @RequestHeader("Authorization") String authHeader) {
+                                          @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            flightService.createFlight(flightDTO, JwtUtil.getId(token));
-            return ResponseEntity.ok("Flight created successfully");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Internal server error: " + e.getMessage());
+            FlightDTO flight = flightService.createFlight(flightDTO, JwtUtil.getId(token));
+
+            return ResponseEntity.ok(flight);
+
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateFlight(@PathVariable Long id, @RequestBody FlightDTO flightDTO,
-                                                @RequestHeader("Authorization") String authHeader) {
+                                          @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            if (flightService.updateFlight(id, flightDTO, JwtUtil.getId(token), JwtUtil.getRole(token)) == null)
-                return ResponseEntity.notFound().build();
+            FlightDTO flight = flightService.updateFlight(id, flightDTO, JwtUtil.getId(token), JwtUtil.getRole(token));
 
-            return ResponseEntity.ok("Flight details successfully changed");
+            if (flight == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("message", "No flight found with ID '" + id + "'.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+
+            return ResponseEntity.ok(flight);
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
     }
 
     @PutMapping("/status/{id}")
     public ResponseEntity<?> toggleFlightStatus(@PathVariable Long id,
-                                                      @RequestHeader("Authorization") String authHeader) {
+                                                @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
-            if (flightService.statusFlight(id, JwtUtil.getId(token), JwtUtil.getRole(token)) == null)
-                return ResponseEntity.notFound().build();
+            Map<String, Object> flight = flightService.statusFlight(id, JwtUtil.getId(token), JwtUtil.getRole(token));
 
-            return ResponseEntity.ok("Flight details successfully changed");
+            return ResponseEntity.status((int) flight.get("status")).body(flight);
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
     }
 }

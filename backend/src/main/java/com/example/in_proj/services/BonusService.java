@@ -25,6 +25,9 @@ public class BonusService {
     public BonusDTO upsertBonus(BonusDTO bonusDTO) {
         Bonus existing = bonusRepository.findByUserIdAndAviaId(bonusDTO.getClient_id(), bonusDTO.getAvia_id());
 
+        if (bonusDTO.getBonus_count() <= 0)
+            throw new IllegalArgumentException("Not allowed to accrue negative or zero bonuses.");
+
         Bonus bonus;
         if (existing != null) {
             existing.setBonus_count(existing.getBonus_count() + bonusDTO.getBonus_count());

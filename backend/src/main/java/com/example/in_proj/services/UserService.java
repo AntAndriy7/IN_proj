@@ -1,5 +1,6 @@
 package com.example.in_proj.services;
 
+import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.AuthDTO;
 import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.Bonus;
@@ -13,6 +14,7 @@ import com.example.in_proj.repository.FlightRepository;
 import com.example.in_proj.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -39,12 +41,6 @@ public class UserService {
                 .orElse(null);
     }
 
-    public List<UserDTO> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(mapper::toDTO)
-                .collect(Collectors.toList());
-    }
-
     public User getByEmail(String email) {
         User user = userRepository.findByEmail(email);
         if (user != null) {
@@ -62,21 +58,34 @@ public class UserService {
         return false;
     }
 
-    public List<UserDTO> getInactiveUsers() {
-        // Обчислення дати 5 років тому за допомогою Calendar
+    public List<Map<String, Object>> getInactiveUsers() {
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.YEAR, -5);
         Date fiveYearsAgoDate = new Date(calendar.getTimeInMillis());
 
         List<User> inactiveUsers = userRepository.findByRecentActivityBefore(fiveYearsAgoDate);
-        return inactiveUsers.stream()
-                .map(mapper::toDTO)
-                .collect(Collectors.toList());
+
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (User user : inactiveUsers) {
+            Map<String, Object> userData = new HashMap<>();
+            userData.put("id", user.getId());
+            userData.put("name", user.getName());
+            userData.put("email", user.getEmail());
+            userData.put("phoneNumber", user.getPhoneNumber());
+            userData.put("recentActivity", user.getRecentActivity());
+
+            results.add(userData);
+        }
+
+        return results;
     }
 
+
     public List<Map<String, Object>> getUsersByFlightId(Long flightId, Long idFromToken) {
-        // Отримаємо рейс
         Flight flight = flightRepository.findById(flightId).orElse(null);
+        List<Map<String, Object>> response = new ArrayList<>();
+
         if (flight == null) {
             return List.of();
         }
@@ -106,23 +115,25 @@ public class UserService {
                 .collect(Collectors.toMap(Bonus::getClient_id, Bonus::getBonus_count));
 
         // Формуємо результат
-        return users.stream().map(user -> {
-            Map<String, Object> result = new HashMap<>();
-            result.put("user", user);
-            result.put("bonus_count", bonusMap.getOrDefault(user.getId(), 0L));
-            return result;
-        }).collect(Collectors.toList());
+        for (User user : users) {
+            Map<String, Object> userData = new HashMap<>();
+            userData.put("id", user.getId());
+            userData.put("name", user.getName());
+            userData.put("email", user.getEmail());
+            userData.put("phoneNumber", user.getPhoneNumber());
+            userData.put("bonus_count", bonusMap.getOrDefault(user.getId(), 0L));
+            response.add(userData);
+        }
+
+        return response;
     }
 
-    public List<Map<String, Object>> getUsersByAviaIdId(Long aviaId, Long idFromToken) {
+    public List<Map<String, Object>> getUsersByAviaId(Long id) {
 
-        List<Flight> flights = flightRepository.findByAviaId(aviaId);
+        List<Flight> flights = flightRepository.findByAviaId(id);
         if (flights.isEmpty()) {
             return List.of();
         }
-
-        if (!Objects.equals(aviaId, idFromToken))
-            throw new IllegalArgumentException("User ID does not match");
 
         List<Long> flightIds = flights.stream()
                 .map(Flight::getId)
@@ -147,25 +158,32 @@ public class UserService {
 
         List<User> users = userRepository.findAllById(userIds);
 
-        List<Bonus> bonuses = bonusRepository.findByUserIdsAndAviaId(userIds, aviaId);
+        List<Bonus> bonuses = bonusRepository.findByUserIdsAndAviaId(userIds, id);
         Map<Long, Long> bonusMap = bonuses.stream()
                 .collect(Collectors.toMap(Bonus::getClient_id, Bonus::getBonus_count));
 
-        return users.stream().map(user -> {
-            Map<String, Object> result = new HashMap<>();
-            result.put("id", user.getId());
-            result.put("name", user.getName());
-            result.put("email", user.getEmail());
-            result.put("phoneNumber", user.getPhoneNumber());
-            result.put("bonus_count", bonusMap.getOrDefault(user.getId(), 0L));
-            return result;
-        }).collect(Collectors.toList());
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (User user : users) {
+            Map<String, Object> userData = new HashMap<>();
+            userData.put("id", user.getId());
+            userData.put("name", user.getName());
+            userData.put("email", user.getEmail());
+            userData.put("phoneNumber", user.getPhoneNumber());
+            userData.put("bonus_count", bonusMap.getOrDefault(user.getId(), 0L));
+            response.add(userData);
+        }
+
+        return response;
     }
 
 
-    public UserDTO createUser(UserDTO userDTO) {
+    public Map<String, Object> createUser(UserDTO userDTO) {
         if (userRepository.findByEmail(userDTO.getEmail()) != null) {
             throw new IllegalArgumentException("A user with this email address already exists!");
+        }
+        if (userRepository.findByPhoneNumber(userDTO.getPhoneNumber()) != null) {
+            throw new IllegalArgumentException("A user with this phone number already exists!");
         }
 
         switch (userDTO.getRole()) {
@@ -186,38 +204,100 @@ public class UserService {
 
         User user = mapper.toEntity(userDTO);
         user = userRepository.save(user);
+        mapper.toDTO(user);
 
-        return mapper.toDTO(user);
+        String token = JwtUtil.generate(user.getEmail(), user.getRole(), user.getName(), Math.toIntExact(user.getId()));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+
+        Map<String, Object> userData = new HashMap<>();
+        result.put("user", userData);
+        userData.put("id", user.getId());
+        userData.put("name", user.getName());
+        userData.put("email", user.getEmail());
+        userData.put("phoneNumber", user.getPhoneNumber());
+        userData.put("role", user.getRole());
+
+        return result;
     }
 
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
-        return userRepository.findById(id).map(existingUser -> {
-            if (userDTO.getName() != null) {
-                existingUser.setName(userDTO.getName());
-            }
-            if (userDTO.getEmail() != null) {
-                existingUser.setEmail(userDTO.getEmail());
-            }
-            if (userDTO.getPhoneNumber() != null) {
-                existingUser.setPhoneNumber(userDTO.getPhoneNumber());
-            }
-            if (userDTO.getPassword() != null) {
-                existingUser.setPassword(userDTO.getPassword());
-            }
-            if (userDTO.getRecentActivity() != null) {
-                existingUser.setRecentActivity(userDTO.getRecentActivity());
-            }
+    public Map<String, Object> updateUser(Long id, UserDTO userDTO) {
+        User existingUser = userRepository.findById(id).orElse(null);
+        Map<String, Object> response = new HashMap<>();
 
-            userRepository.save(existingUser);
-            return mapper.toDTO(existingUser);
-        }).orElse(null);
-    }
-
-    public boolean deleteUser(Long id) {
-        if (userRepository.existsById(id)) {
-            userRepository.deleteById(id);
-            return true;
+        if (existingUser == null) {
+            response.put("message", "No user with that ID '" + id + "' found.");
+            return response;
         }
-        return false;
+
+        if (userRepository.findByEmail(userDTO.getEmail()) != null) {
+            throw new IllegalArgumentException("A user with this email address already exists!");
+        }
+        if (userRepository.findByPhoneNumber(userDTO.getPhoneNumber()) != null) {
+            throw new IllegalArgumentException("A user with this phone number already exists!");
+        }
+
+        if (userDTO.getName() != null) {
+            existingUser.setName(userDTO.getName());
+        }
+        if (userDTO.getEmail() != null) {
+            existingUser.setEmail(userDTO.getEmail());
+        }
+        if (userDTO.getPhoneNumber() != null) {
+            existingUser.setPhoneNumber(userDTO.getPhoneNumber());
+        }
+        if (userDTO.getPassword() != null) {
+            String encodedPassword = passwordEncoder.encode(userDTO.getPassword());
+            existingUser.setPassword(encodedPassword);
+        }
+        if (userDTO.getRecentActivity() != null) {
+            existingUser.setRecentActivity(userDTO.getRecentActivity());
+        }
+
+        User updatedUser = userRepository.save(existingUser);
+        mapper.toDTO(updatedUser);
+
+        String token = JwtUtil.generate(
+                updatedUser.getEmail(),
+                updatedUser.getRole(),
+                updatedUser.getName(),
+                Math.toIntExact(updatedUser.getId()));
+
+        response.put("token", token);
+
+        Map<String, Object> userData = new HashMap<>();
+        response.put("user", userData);
+        userData.put("id", updatedUser.getId());
+        userData.put("name", updatedUser.getName());
+        userData.put("email", updatedUser.getEmail());
+        userData.put("phoneNumber", updatedUser.getPhoneNumber());
+        userData.put("role", updatedUser.getRole());
+
+        return response;
+    }
+
+    public Map<String, Object> softDeleteUser(Long id) {
+        User existingUser = userRepository.findById(id).orElse(null);
+        Map<String, Object> response = new HashMap<>();
+
+        if (existingUser == null) {
+            response.put("status", HttpStatus.NOT_FOUND.value());
+            response.put("message", "No user with that ID '" + id + "' found.");
+            return response;
+        } else if (existingUser.is_deleted()) {
+            response.put("status", HttpStatus.BAD_REQUEST.value());
+            response.put("message", "Flight with ID '" + id + "' already deactivated");
+            return response;
+        }
+
+        existingUser.set_deleted(true);
+
+        userRepository.save(existingUser);
+
+        response.put("status", HttpStatus.OK.value());
+        response.put("message", "User '" + existingUser.getEmail() + "' successfully deactivated");
+
+        return response;
     }
 }

@@ -17,7 +17,7 @@ public class BonusController {
     private final BonusService bonusService;
 
     @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<List<?>>> getAllBonusesByClient(@PathVariable Long clientId,
+    public ResponseEntity<?> getAllBonusesByClient(@PathVariable Long clientId,
                                                                @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
@@ -27,34 +27,36 @@ public class BonusController {
             List<List<?>> result = bonusService.getAllBonusesWithAvia(clientId);
 
             if (result == null || result.isEmpty())
-                return ResponseEntity.noContent().build();
+                return ResponseEntity.notFound().build();
 
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.status(403).body(e.getMessage());
         }
     }
 
     @GetMapping("/client/{clientId}/avia/{aviaId}")
-    public ResponseEntity<BonusDTO> getBonusErrorByClientAndAvia(
+    public ResponseEntity<?> getBonusErrorByClientAndAvia(
             @PathVariable Long clientId, @PathVariable Long aviaId,
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
             if (!Objects.equals(clientId, JwtUtil.getId(token)))
                 throw new IllegalArgumentException("User ID does not match");
+
             BonusDTO bonus = bonusService.getBonusByClientAndAvia(clientId, aviaId);
-            if (bonus == null) {
+
+            if (bonus == null)
                 return ResponseEntity.notFound().build();
-            }
+
             return ResponseEntity.ok(bonus);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.status(403).body(e.getMessage());
         }
     }
 
     @PutMapping
-    public ResponseEntity<BonusDTO> upsertBonus(@RequestBody BonusDTO bonusDTO,
+    public ResponseEntity<?> upsertBonus(@RequestBody BonusDTO bonusDTO,
                                                 @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
@@ -68,7 +70,7 @@ public class BonusController {
 
             return ResponseEntity.ok(updatedBonus);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

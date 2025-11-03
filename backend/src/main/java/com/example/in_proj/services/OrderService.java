@@ -1,7 +1,6 @@
 package com.example.in_proj.services;
 
 import com.example.in_proj.dto.OrderDTO;
-import com.example.in_proj.dto.FlightDTO;
 import com.example.in_proj.dto.TicketDTO;
 import com.example.in_proj.mapper.OrderMapper;
 import com.example.in_proj.entity.*;
@@ -26,38 +25,22 @@ public class OrderService {
     private final OrderMapper mapper = OrderMapper.INSTANCE;
 
     public List<List<?>> getOrdersByClientId(Long clientId) {
-        // 1. Отримуємо замовлення по clientId
         List<Order> orders = orderRepository.findByClient_id(clientId);
 
-        // 2. Перетворюємо замовлення в DTO
         List<OrderDTO> orderDTOs = orders.stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
 
-        // 3. Отримуємо літаки, пов’язані з замовленнями через FlightService
         Set<Long> flightIds = orders.stream()
                 .map(Order::getFlight_id)
                 .collect(Collectors.toSet());
 
-        List<FlightDTO> flights = flightService.getAllFlights(flightIds);
-
-        // 4. Мінімальні дані авіа-користувачів через FlightService
-        Set<Long> aviaIds = flights.stream()
-                .map(FlightDTO::getAvia_id)
-                .collect(Collectors.toSet());
-
-        List<Map<String, Object>> users = flightService.getAvia(aviaIds);
-
-        // 5. Отримуємо всі квитки для цих замовлень через TicketService
         List<TicketDTO> tickets = orders.stream()
                 .flatMap(order -> ticketService.getTicketsByOrderId(order.getId()).stream())
                 .collect(Collectors.toList());
 
-        // 6. Формуємо комбінований список
-        List<List<?>> combined = new ArrayList<>();
+        List<List<?>> combined = flightService.getAllFlightsCombined(flightIds);
         combined.add(orderDTOs);
-        combined.add(flights);
-        combined.add(users);
         combined.add(tickets);
 
         return combined;

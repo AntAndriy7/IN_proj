@@ -29,20 +29,23 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/static/**").permitAll()
-                        .requestMatchers("/api/flight/status", "/api/flight/opensky").permitAll()
+                        .requestMatchers("/vite.svg", "/assets/**").permitAll()
+                        .requestMatchers("/api/flight/status", "/api/plane/opensky").permitAll()
                         .requestMatchers("/api/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/user").permitAll()
 
-                        .requestMatchers("/api/user/out").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/user/out", "/api/flight").hasRole("ADMIN")
                         .requestMatchers("/api/bonus/client/**").hasRole("CLIENT")
-                        .requestMatchers("/api/flight/avia/*", "/api/user/flight/*", "/api/user/avia/*", "/api/bonus").hasRole("AVIA")
-                        .requestMatchers("/api/airport", "/api/plane", "/api/flight", "/api/flight/status/*").hasAnyRole("ADMIN", "AVIA")
+                        .requestMatchers("/api/flight", "/api/flight/avia", "/api/user/flight/*", "/api/user/avia", "/api/bonus").hasRole("AVIA")
+                        .requestMatchers("/api/flight/status/*").hasAnyRole("ADMIN", "AVIA")
                         .requestMatchers("/api/order/**", "/api/ticket/order/*").hasAnyRole("ADMIN", "CLIENT")
 
+                        .requestMatchers(HttpMethod.POST, "/api/plane", "/api/airport").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/plane", "/api/airport").hasAnyRole("ADMIN", "AVIA")
                         .requestMatchers(HttpMethod.PUT, "/api/flight/*").hasAnyRole("ADMIN", "AVIA")
                         .requestMatchers(HttpMethod.GET, "/api/flight/*").hasRole("CLIENT")
 
-                        .requestMatchers("/api/user/*").authenticated()
+                        .requestMatchers("/api/user/**").authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

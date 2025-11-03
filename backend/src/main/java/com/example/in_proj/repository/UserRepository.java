@@ -10,8 +10,10 @@ import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    @Query("SELECT u FROM User u WHERE u.recentActivity < :date")
+    @Query("SELECT u FROM User u WHERE u.recentActivity < :date AND u.is_deleted = false")
     List<User> findByRecentActivityBefore(Date date);
     @Query("SELECT u FROM User u WHERE u.email = :email")
     User findByEmail(String email);
+    @Query("SELECT u FROM User u WHERE u.phoneNumber = :phone_number")
+    User findByPhoneNumber(String phone_number);
 }

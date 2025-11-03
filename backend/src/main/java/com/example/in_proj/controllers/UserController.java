@@ -6,9 +6,11 @@ import com.example.in_proj.dto.UserDTO;
 import com.example.in_proj.entity.User;
 import com.example.in_proj.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,135 +22,151 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        List<UserDTO> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUser(@PathVariable Long id,
-                                           @RequestHeader("Authorization") String authHeader) {
+    @GetMapping()
+    public ResponseEntity<?> getUser(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        try {
-            if (!Objects.equals(id, JwtUtil.getId(token)))
-                throw new IllegalArgumentException("User ID does not match");
 
-            UserDTO user = userService.getUser(id);
+        Map<String, Object> response = new HashMap<>();
+        UserDTO user = userService.getUser(JwtUtil.getId(token));
 
-            if (user == null)
-                return ResponseEntity.notFound().build();
-
-            return ResponseEntity.ok(user);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+        if (user == null) {
+            response.put("message", "No user with that ID '" + JwtUtil.getId(token) + "' found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(user);
         }
+
+        response.put("id", user.getId());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("phoneNumber", user.getPhoneNumber());
+        response.put("role", user.getRole());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/flight/{flightId}")
-    public ResponseEntity<List<Map<String, Object>>> getUsersByFlightId(@PathVariable Long flightId,
-                                                                       @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getUsersByFlightId(@PathVariable Long flightId,
+                                                @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         try {
             List<Map<String, Object>> users = userService.getUsersByFlightId(flightId, JwtUtil.getId(token));
 
-            if (users.isEmpty())
-                return ResponseEntity.noContent().build();
+            if (users.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("message", "No customers were found on the airline with '"
+                        + JwtUtil.getId(token) + "' on the flight with ID '" + flightId + "'.");
+                ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
 
             return ResponseEntity.ok(users);
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
     }
 
-    @GetMapping("/avia/{aviaId}")
-    public ResponseEntity<List<Map<String, Object>>> getUsersByAviaId(@PathVariable Long aviaId,
-                                                                        @RequestHeader("Authorization") String authHeader) {
+    @GetMapping("/avia")
+    public ResponseEntity<?> getUsersByAviaId(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        try {
-            List<Map<String, Object>> users = userService.getUsersByAviaIdId(aviaId, JwtUtil.getId(token));
 
-            if (users.isEmpty())
-                return ResponseEntity.noContent().build();
+        List<Map<String, Object>> users = userService.getUsersByAviaId(JwtUtil.getId(token));
 
-            return ResponseEntity.ok(users);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+        if (users.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "No customers were found on the airline with '"
+                    + JwtUtil.getId(token) + "'.");
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
+
+        return ResponseEntity.ok(users);
     }
 
     @GetMapping("/out")
-    public ResponseEntity<List<UserDTO>> getInactiveUsers() {
-        List<UserDTO> inactiveUsers = userService.getInactiveUsers();
+    public ResponseEntity<?> getInactiveUsers() {
+        List<Map<String, Object>> inactiveUsers = userService.getInactiveUsers();
+
         if (inactiveUsers.isEmpty()) {
-            return ResponseEntity.noContent().build();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", "No inactive clients found.");
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
+
         return ResponseEntity.ok(inactiveUsers);
     }
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody UserDTO userDTO) {
         try {
-            userService.createUser(userDTO);
-            return ResponseEntity.ok("User successfully registered!");
+            Map<String, Object> user = userService.createUser(userDTO);
+            return ResponseEntity.ok(user);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
         }
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthDTO authDTO) {
+        Map<String, Object> response = new HashMap<>();
+
         if (userService.authenticate(authDTO)) {
             User user = userService.getByEmail(authDTO.getEmail());
+
+            if (user.is_deleted()) {
+                response.put("message", "Your account '" + user.getEmail() + "' has been deactivated, please contact the administration.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+
             String token = JwtUtil.generate(user.getEmail(), user.getRole(), user.getName(), Math.toIntExact(user.getId()));
-            return ResponseEntity.ok("{\"token\":\"" + token + "\"}");
+
+            response.put("token", token);
+
+            Map<String, Object> userData = new HashMap<>();
+            response.put("user", userData);
+            userData.put("id", user.getId());
+            userData.put("name", user.getName());
+            userData.put("email", user.getEmail());
+            userData.put("phoneNumber", user.getPhoneNumber());
+            userData.put("role", user.getRole());
+
+            return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.status(401).body("{\"error\":\"Invalid email or password\"}");
+            response.put("message", "Invalid email or password.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO,
+    @PutMapping()
+    public ResponseEntity<?> updateUser(@RequestBody UserDTO userDTO,
                                         @RequestHeader("Authorization") String authHeader) {
         String oldToken = authHeader.replace("Bearer ", "");
         try {
-            if (!Objects.equals(id, JwtUtil.getId(oldToken)))
-                throw new IllegalArgumentException("User ID does not match");
+            Map<String, Object> updatedUser = userService.updateUser(JwtUtil.getId(oldToken), userDTO);
 
-            UserDTO updatedUser = userService.updateUser(id, userDTO);
+            if (updatedUser == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(updatedUser);
+            }
 
-            if (updatedUser == null)
-                return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(updatedUser);
 
-            String newToken = JwtUtil.generate(
-                    updatedUser.getEmail(),
-                    updatedUser.getRole(),
-                    updatedUser.getName(),
-                    Math.toIntExact(updatedUser.getId())
-            );
-
-            return ResponseEntity.ok("{\"token\":\"" + newToken + "\"}");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id,
-                                           @RequestHeader("Authorization") String authHeader) {
+    @PutMapping("/delete/{userId}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long userId, @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        try {
-            if (!Objects.equals(id, JwtUtil.getId(token)) && !Objects.equals("ADMIN", JwtUtil.getRole(token)))
-                throw new IllegalArgumentException("User ID does not match");
 
-            boolean deleted = userService.deleteUser(id);
+        if (!Objects.equals(userId, JwtUtil.getId(token)) && !Objects.equals("ADMIN", JwtUtil.getRole(token)))
+            throw new IllegalArgumentException("User ID does not match");
 
-            if (!deleted)
-                return ResponseEntity.notFound().build();
+        Map<String, Object> deletedUser = userService.softDeleteUser(userId);
 
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        return ResponseEntity.status((int) deletedUser.get("status")).body(deletedUser);
     }
 }

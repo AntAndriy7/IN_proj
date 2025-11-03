@@ -84,9 +84,28 @@ public class PlaneService {
     }
 
     public PlaneDTO createPlane(PlaneDTO planeDTO) {
+        String model = planeDTO.getModel();
+        Long seats_number = planeDTO.getSeats_number();
+
+        if (containsHtml(model)) {
+            throw new IllegalArgumentException("Model name cannot contain HTML tags.");
+        }
+
+        if (seats_number <= 10 || seats_number >= 860) {
+            throw new IllegalArgumentException("Number of seats must be in the range 10-860.");
+        }
+
+        if (planeRepository.findByModel(planeDTO.getModel()) != null) {
+            throw new IllegalArgumentException("Plane with model '" + planeDTO.getModel() + "' already exists.");
+        }
+
         Plane plane = mapper.toEntity(planeDTO);
         plane = planeRepository.save(plane);
 
         return mapper.toDTO(plane);
+    }
+
+    private boolean containsHtml(String input) {
+        return input != null && input.matches(".*<[^>]+>.*");
     }
 }

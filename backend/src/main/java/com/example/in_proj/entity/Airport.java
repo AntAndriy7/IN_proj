@@ -20,4 +20,7 @@ public class Airport {
 
     @Column(name = "code")
     private String code;
+
+    @Column(name = "country")
+    private String country;
 }
