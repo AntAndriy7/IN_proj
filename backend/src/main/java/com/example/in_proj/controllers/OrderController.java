@@ -20,23 +20,19 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<List<?>>> getOrdersByClientId(@PathVariable Long clientId,
-                                                             @RequestHeader("Authorization") String authHeader) {
+    @GetMapping("/client")
+    public ResponseEntity<?> getOrdersByClientId(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        try {
-            if (!Objects.equals(clientId, JwtUtil.getId(token)))
-                throw new IllegalArgumentException("User ID does not match");
 
-            List<List<?>> combined = orderService.getOrdersByClientId(clientId);
+        List<List<?>> result = orderService.getOrdersByClientId(JwtUtil.getId(token));
 
-            if (combined.isEmpty() || combined.get(0).isEmpty())
-                return ResponseEntity.notFound().build();
-
-            return ResponseEntity.ok(combined);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+        if (result.stream().allMatch(List::isEmpty)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "No orders found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
+
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping

@@ -17,13 +17,14 @@ public class BonusService {
     private final UserService userService;
     private final BonusMapper mapper = BonusMapper.INSTANCE;
 
-    public BonusDTO getBonusByClientAndAvia(Long clientId, Long aviaId) {
+    public BonusDTO getBonusByAviaId(Long clientId, Long aviaId) {
         Bonus bonus = bonusRepository.findByUserIdAndAviaId(clientId, aviaId);
         return bonus != null ? mapper.toDTO(bonus) : null;
     }
 
-    public BonusDTO upsertBonus(BonusDTO bonusDTO) {
-        Bonus existing = bonusRepository.findByUserIdAndAviaId(bonusDTO.getClient_id(), bonusDTO.getAvia_id());
+    public BonusDTO updateBonus(Long aviaId, BonusDTO bonusDTO) {
+        bonusDTO.setAvia_id(aviaId);
+        Bonus existing = bonusRepository.findByUserIdAndAviaId(bonusDTO.getClient_id(), aviaId);
 
         if (bonusDTO.getBonus_count() <= 0)
             throw new IllegalArgumentException("Not allowed to accrue negative or zero bonuses.");

@@ -8,6 +8,7 @@ import com.example.in_proj.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,13 +61,19 @@ public class OrderService {
         Plane plane = planeRepository.findById(flight.getPlane_id())
                 .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + flight.getPlane_id()));
 
+        long tickets_price = flight.getTicket_price() * names.size();
+
         if (usedBonuses != 0) {
             // Отримуємо bonus
-            Bonus bonus = bonusRepository.findByUserIdAndAviaId(orderDTO.getClient_id(), flight.getAvia_id());
+            Bonus bonus = bonusRepository.findByUserIdAndAviaId(clientId, flight.getAvia_id());
             if (bonus == null) {
                 throw new IllegalArgumentException("Bonus not found!");
             } else if (bonus.getBonus_count() < usedBonuses) {
                 throw new IllegalArgumentException("The bonuses used are not valid!");
+            } else if (usedBonuses > (tickets_price)/2) {
+                throw new IllegalArgumentException("Maximum allowed used bonuses 50% of the total order price.");
+            } else if (usedBonuses < 100) {
+                throw new IllegalArgumentException("The minimum amount of bonuses used is 100.");
             }
 
             bonus.setBonus_count(bonus.getBonus_count() - usedBonuses);
@@ -83,7 +90,7 @@ public class OrderService {
         //TODO Додати перевірки та валідацію
         orderDTO.setClient_id(clientId);
         orderDTO.setTicket_quantity(names.size());
-        orderDTO.setTotal_price(flight.getTicket_price() * names.size() - usedBonuses);
+        orderDTO.setTotal_price(tickets_price - usedBonuses);
 
         // Створюємо замовлення
         Order order = mapper.toEntity(orderDTO);
