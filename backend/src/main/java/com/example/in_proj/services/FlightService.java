@@ -4,10 +4,9 @@ import com.example.in_proj.dto.FlightDTO;
 import com.example.in_proj.entity.Bonus;
 import com.example.in_proj.entity.Order;
 import com.example.in_proj.entity.Flight;
+import com.example.in_proj.entity.Plane;
 import com.example.in_proj.mapper.FlightMapper;
-import com.example.in_proj.repository.BonusRepository;
-import com.example.in_proj.repository.OrderRepository;
-import com.example.in_proj.repository.FlightRepository;
+import com.example.in_proj.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +28,8 @@ public class FlightService {
     private final FlightRepository flightRepository;
     private final OrderRepository orderRepository;
     private final BonusRepository bonusRepository;
+    private final PlaneRepository planeRepository;
+    private final AirportRepository airportRepository;
     private final FlightMapper mapper = FlightMapper.INSTANCE;
 
     public List<Map<String, Object>> getAvia(Set<Long> aviaIds) {
@@ -192,6 +193,15 @@ public class FlightService {
         Long departureId = flightDTO.getDeparture_id();
         Long destinationId = flightDTO.getDestination_id();
 
+        planeRepository.findById(flightDTO.getPlane_id())
+                .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + flightDTO.getPlane_id()));
+
+        airportRepository.findById(flightDTO.getDeparture_id())
+                .orElseThrow(() -> new IllegalArgumentException("Airport not found with ID: " + flightDTO.getDeparture_id()));
+
+        airportRepository.findById(flightDTO.getDestination_id())
+                .orElseThrow(() -> new IllegalArgumentException("Airport not found with ID: " + flightDTO.getDestination_id()));
+
         if (Objects.equals(departureId, destinationId)) {
             throw new IllegalArgumentException("Departure and destination airports cannot be the same.");
         }
@@ -239,6 +249,15 @@ public class FlightService {
         if (!Objects.equals(existingFlight.getAvia_id(), idFromToken) && !"ADMIN".equals(roleFromToken)) {
             throw new IllegalArgumentException("User ID does not match");
         }
+
+        planeRepository.findById(flightDTO.getPlane_id())
+                .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + flightDTO.getPlane_id()));
+
+        airportRepository.findById(flightDTO.getDeparture_id())
+                .orElseThrow(() -> new IllegalArgumentException("Airport not found with ID: " + flightDTO.getDeparture_id()));
+
+        airportRepository.findById(flightDTO.getDestination_id())
+                .orElseThrow(() -> new IllegalArgumentException("Airport not found with ID: " + flightDTO.getDestination_id()));
 
         LocalDate departureDate = flightDTO.getDeparture_date().toLocalDate();
         LocalDate arrivalDate = flightDTO.getArrival_date().toLocalDate();

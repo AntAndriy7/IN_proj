@@ -50,7 +50,11 @@ public class OrderService {
     public OrderDTO addOrder(Long clientId, OrderDTO orderDTO, List<String> names, long usedBonuses) {
         // Валідація списку імен
         if (names == null || names.isEmpty()) {
-            throw new IllegalArgumentException("Name list cannot be empty.");
+            throw new IllegalArgumentException("Tickets cannot be empty.");
+        }
+
+        for (String name : names) {
+            nameValidation(name);
         }
 
         // Отримуємо рейс
@@ -70,10 +74,10 @@ public class OrderService {
                 throw new IllegalArgumentException("Bonus not found!");
             } else if (bonus.getBonus_count() < usedBonuses) {
                 throw new IllegalArgumentException("The bonuses used are not valid!");
-            } else if (usedBonuses > (tickets_price)/2) {
+            } else if (usedBonuses > tickets_price / 2) {
                 throw new IllegalArgumentException("Maximum allowed used bonuses 50% of the total order price.");
-            } else if (usedBonuses < 100) {
-                throw new IllegalArgumentException("The minimum amount of bonuses used is 100.");
+            } else if (usedBonuses < 10) {
+                throw new IllegalArgumentException("The minimum amount of bonuses used is 10.");
             }
 
             bonus.setBonus_count(bonus.getBonus_count() - usedBonuses);
@@ -87,10 +91,10 @@ public class OrderService {
             throw new IllegalArgumentException("Not enough seats available.");
         }
 
-        //TODO Додати перевірки та валідацію
         orderDTO.setClient_id(clientId);
         orderDTO.setTicket_quantity(names.size());
         orderDTO.setTotal_price(tickets_price - usedBonuses);
+        orderDTO.setPayment_status("booked");
 
         // Створюємо замовлення
         Order order = mapper.toEntity(orderDTO);
@@ -148,23 +152,13 @@ public class OrderService {
             throw new IllegalArgumentException("User ID does not match");
         }
 
-        if (orderDTO.getClient_id() != 0) {
-            existingOrder.setClient_id(orderDTO.getClient_id());
-        }
-        if (orderDTO.getFlight_id() != 0) {
-            existingOrder.setFlight_id(orderDTO.getFlight_id());
-        }
-        if (orderDTO.getTicket_quantity() != 0) {
-            existingOrder.setTicket_quantity(orderDTO.getTicket_quantity());
-        }
-        if (orderDTO.getTotal_price() != 0) {
-            existingOrder.setTotal_price(orderDTO.getTotal_price());
-        }
         if (orderDTO.getPayment_status() != null) {
             if ("canceled".equals(orderDTO.getPayment_status())) {
                 processOrder(existingOrder, 2);
-            } else {
+            } else if ("paid".equals(orderDTO.getPayment_status())) {
                 existingOrder.setPayment_status(orderDTO.getPayment_status());
+            } else {
+                throw new IllegalArgumentException("Payment updated status cannot be " + orderDTO.getPayment_status());
             }
         }
 
@@ -210,5 +204,19 @@ public class OrderService {
         order.setPayment_status("canceled");
         orderRepository.save(order);
         flightRepository.save(flight);
+    }
+
+    private boolean containsHtml(String input) {
+        return input != null && input.matches(".*<[^>]+>.*");
+    }
+
+    private void nameValidation(String name) {
+        if (containsHtml(name)) {
+            throw new IllegalArgumentException("Name cannot contain HTML tags.");
+        }
+        if (name == null || name.isBlank())
+            throw new IllegalArgumentException("Name cannot be empty");
+        if (name.length() > 201)
+            throw new IllegalArgumentException("Name cannot exceed 201 characters");
     }
 }
