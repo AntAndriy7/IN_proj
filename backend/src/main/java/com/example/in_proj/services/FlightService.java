@@ -250,15 +250,6 @@ public class FlightService {
             throw new IllegalArgumentException("User ID does not match");
         }
 
-        planeRepository.findById(flightDTO.getPlane_id())
-                .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + flightDTO.getPlane_id()));
-
-        airportRepository.findById(flightDTO.getDeparture_id())
-                .orElseThrow(() -> new IllegalArgumentException("Airport not found with ID: " + flightDTO.getDeparture_id()));
-
-        airportRepository.findById(flightDTO.getDestination_id())
-                .orElseThrow(() -> new IllegalArgumentException("Airport not found with ID: " + flightDTO.getDestination_id()));
-
         LocalDate departureDate = flightDTO.getDeparture_date().toLocalDate();
         LocalDate arrivalDate = flightDTO.getArrival_date().toLocalDate();
         LocalTime departureTime = flightDTO.getDeparture_time().toLocalTime();
