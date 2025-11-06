@@ -24,9 +24,9 @@ public class OrderController {
     public ResponseEntity<?> getOrdersByClientId(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
 
-        List<List<?>> result = orderService.getOrdersByClientId(JwtUtil.getId(token));
+        Map<String, Object> result = orderService.getOrdersByClientId(JwtUtil.getId(token));
 
-        if (result.stream().allMatch(List::isEmpty)) {
+        if (result == null) {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "No orders found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -70,8 +70,16 @@ public class OrderController {
             return ResponseEntity.ok(order);
 
         } catch (IllegalArgumentException e) {
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            String message = e.getMessage();
+
+            errorResponse.put("message", message);
+
+            if (message != null && message.toLowerCase().contains("not match")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+            } else {
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
         }
     }
 }

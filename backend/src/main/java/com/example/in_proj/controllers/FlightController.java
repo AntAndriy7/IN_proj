@@ -21,9 +21,9 @@ public class FlightController {
 
     @GetMapping
     public ResponseEntity<?> getAllFlights() {
-        List<List<?>> result = flightService.getAllFlightsCombined(null);
+        Map<String, Object> result = flightService.getAllFlightsCombined(null);
 
-        if (result.stream().allMatch(List::isEmpty)) {
+        if (result == null) {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "No flights found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -34,9 +34,9 @@ public class FlightController {
 
     @GetMapping("/status")
     public ResponseEntity<?> getFlightsWithUsers() {
-        List<List<?>> result = flightService.getFlightsByStatus();
+        Map<String, Object> result = flightService.getFlightsByStatus();
 
-        if (result.stream().allMatch(List::isEmpty)) {
+        if (result == null) {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "No active flights found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -49,9 +49,9 @@ public class FlightController {
     public ResponseEntity<?> getFlightsByAviaId(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
 
-        List<List<?>> result = flightService.getFlightsByAviaId(JwtUtil.getId(token));
+        Map<String, Object> result = flightService.getFlightsByAviaId(JwtUtil.getId(token));
 
-        if (result.stream().allMatch(List::isEmpty)) {
+        if (result == null) {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "No active flights found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -71,8 +71,15 @@ public class FlightController {
 
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(errorResponse);
+            String message = e.getMessage();
+
+            errorResponse.put("message", message);
+
+            if (message != null && message.toLowerCase().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            } else {
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
         }
     }
 
@@ -93,8 +100,15 @@ public class FlightController {
 
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+            String message = e.getMessage();
+
+            errorResponse.put("message", message);
+
+            if (message != null && message.toLowerCase().contains("not match")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+            } else {
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
         }
     }
 

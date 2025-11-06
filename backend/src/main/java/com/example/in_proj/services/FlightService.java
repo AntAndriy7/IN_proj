@@ -75,13 +75,15 @@ public class FlightService {
                 .collect(Collectors.toList());
     }
 
-    public List<List<?>> getAllFlightsCombined(Set<Long> flightIds) {
+    public Map<String, Object> getAllFlightsCombined(Set<Long> flightIds) {
         checkAndUpdateFlightStatuses();
 
         List<Flight> flights = flightIds == null ?
                 flightRepository.findAll() :
                 flightRepository.findAllById(flightIds);
 
+        if (flights.isEmpty()) return null;
+
         List<FlightDTO> flightDTOs = flights.stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
@@ -98,23 +100,22 @@ public class FlightService {
                 .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
                 .collect(Collectors.toSet());
 
-        List<Map<String, Object>> airlines = getAvia(aviaIds);
-        List<Map<String, Object>> planes = getPlanes(planeIds);
-        List<Map<String, Object>> airports = getAirports(airportIds);
-
-        List<List<?>> combined = new ArrayList<>();
-        combined.add(flightDTOs);
-        combined.add(airlines);
-        combined.add(planes);
-        combined.add(airports);
+        Map<String, Object> combined = new HashMap<>();
+        combined.put("flights", flightDTOs);
+        combined.put("airlines", getAvia(aviaIds));
+        combined.put("planes", getPlanes(planeIds));
+        combined.put("airports", getAirports(airportIds));
 
         return combined;
     }
 
-    public List<List<?>> getFlightsByStatus() {
+    public Map<String, Object> getFlightsByStatus() {
         checkAndUpdateFlightStatuses();
 
         List<Flight> flights = flightRepository.findByStatus(true);
+
+        if (flights.isEmpty()) return null;
+
         List<FlightDTO> flightDTOs = flights.stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
@@ -131,18 +132,15 @@ public class FlightService {
                 .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
                 .collect(Collectors.toSet());
 
-        List<Map<String, Object>> users = getAvia(aviaIds);
-        List<Map<String, Object>> planes = getPlanes(planeIds);
-        List<Map<String, Object>> airports = getAirports(airportIds);
-
-        List<List<?>> combined = new ArrayList<>();
-        combined.add(flightDTOs);
-        combined.add(users);
-        combined.add(planes);
-        combined.add(airports);
+        Map<String, Object> combined = new HashMap<>();
+        combined.put("flights", flightDTOs);
+        combined.put("airlines", getAvia(aviaIds));
+        combined.put("planes", getPlanes(planeIds));
+        combined.put("airports", getAirports(airportIds));
 
         return combined;
     }
+
 
     private void checkAndUpdateFlightStatuses() {
         List<Flight> flights = flightRepository.findAll();
@@ -161,8 +159,10 @@ public class FlightService {
         }
     }
 
-    public List<List<?>> getFlightsByAviaId(Long aviaId) {
+    public Map<String, Object> getFlightsByAviaId(Long aviaId) {
         List<Flight> flights = flightRepository.findByAviaId(aviaId);
+
+        if (flights.isEmpty()) return null;
 
         List<FlightDTO> flightDTOs = flights.stream()
                 .map(mapper::toDTO)
@@ -176,13 +176,10 @@ public class FlightService {
                 .flatMap(f -> Stream.of(f.getDeparture_id(), f.getDestination_id()))
                 .collect(Collectors.toSet());
 
-        List<Map<String, Object>> planes = getPlanes(planeIds);
-        List<Map<String, Object>> airports = getAirports(airportIds);
-
-        List<List<?>> combined = new ArrayList<>();
-        combined.add(flightDTOs);
-        combined.add(planes);
-        combined.add(airports);
+        Map<String, Object> combined = new HashMap<>();
+        combined.put("flights", flightDTOs);
+        combined.put("planes", getPlanes(planeIds));
+        combined.put("airports", getAirports(airportIds));
 
         return combined;
     }

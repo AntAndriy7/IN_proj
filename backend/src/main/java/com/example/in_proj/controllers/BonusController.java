@@ -22,9 +22,9 @@ public class BonusController {
     public ResponseEntity<?> getAllBonusesByClient(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
 
-        List<List<?>> result = bonusService.getAllBonusesWithAvia(JwtUtil.getId(token));
+        Map<String, Object> result = bonusService.getAllBonusesWithAvia(JwtUtil.getId(token));
 
-        if (result.stream().allMatch(List::isEmpty)) {
+        if (result == null) {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "No bonuses found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);

@@ -8,7 +8,6 @@ import com.example.in_proj.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,8 +24,10 @@ public class OrderService {
     private final TicketRepository ticketRepository;
     private final OrderMapper mapper = OrderMapper.INSTANCE;
 
-    public List<List<?>> getOrdersByClientId(Long clientId) {
+    public Map<String, Object> getOrdersByClientId(Long clientId) {
         List<Order> orders = orderRepository.findByClient_id(clientId);
+
+        if (orders.isEmpty()) return null;
 
         List<OrderDTO> orderDTOs = orders.stream()
                 .map(mapper::toDTO)
@@ -40,9 +41,12 @@ public class OrderService {
                 .flatMap(order -> ticketService.getTicketsByOrderId(order.getId()).stream())
                 .collect(Collectors.toList());
 
-        List<List<?>> combined = flightService.getAllFlightsCombined(flightIds);
-        combined.add(orderDTOs);
-        combined.add(tickets);
+        Map<String, Object> flightsData = flightService.getAllFlightsCombined(flightIds);
+
+        Map<String, Object> combined = new HashMap<>();
+        combined.put("orders", orderDTOs);
+        combined.put("tickets", tickets);
+        combined.put("flightsData", flightsData);
 
         return combined;
     }

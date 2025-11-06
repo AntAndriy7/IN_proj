@@ -111,7 +111,12 @@ public class UserController {
     public ResponseEntity<?> login(@RequestBody AuthDTO authDTO) {
         Map<String, Object> response = new HashMap<>();
 
-        if (userService.authenticate(authDTO)) {
+        try {
+            if (!userService.authenticate(authDTO)) {
+                response.put("message", "Incorrect email address or password.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
             User user = userService.getByEmail(authDTO.getEmail());
 
             if (user.is_deleted()) {
@@ -132,9 +137,10 @@ public class UserController {
             userData.put("role", user.getRole());
 
             return ResponseEntity.ok(response);
-        } else {
-            response.put("message", "User with such email and/or password doesn't exist.");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+
+        } catch (IllegalArgumentException e) {
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
 
@@ -161,12 +167,15 @@ public class UserController {
     @PutMapping("/delete/{userId}")
     public ResponseEntity<?> deleteUser(@PathVariable Long userId, @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
+        Map<String, Object> response = new HashMap<>();
 
-        if (!Objects.equals(userId, JwtUtil.getId(token)) && !Objects.equals("ADMIN", JwtUtil.getRole(token)))
-            throw new IllegalArgumentException("User ID does not match");
+        if (!Objects.equals(userId, JwtUtil.getId(token)) && !Objects.equals("ADMIN", JwtUtil.getRole(token))) {
+            response.put("message", "User ID does not match.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        }
 
-        Map<String, Object> deletedUser = userService.softDeleteUser(userId);
+        response = userService.softDeleteUser(userId);
 
-        return ResponseEntity.status((int) deletedUser.get("status")).body(deletedUser);
+        return ResponseEntity.status((int) response.get("status")).body(response);
     }
 }

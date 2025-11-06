@@ -26,6 +26,8 @@ public class BonusService {
         bonusDTO.setAvia_id(aviaId);
         Bonus existing = bonusRepository.findByUserIdAndAviaId(bonusDTO.getClient_id(), aviaId);
 
+        printAviaCompanyIds(getAllBonusesWithAvia(bonusDTO.getClient_id()));
+
         if (bonusDTO.getBonus_count() <= 0)
             throw new IllegalArgumentException("Not allowed to accrue negative or zero bonuses.");
 
@@ -41,10 +43,40 @@ public class BonusService {
         return mapper.toDTO(saved);
     }
 
-    public List<List<?>> getAllBonusesWithAvia(Long clientId) {
+    public void printAviaCompanyIds(Map<String, Object> bonusesWithAvia) {
+        if (bonusesWithAvia == null || !bonusesWithAvia.containsKey("avia_companies")) {
+            System.out.println("No 'avia_companies' key found or map is null.");
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> aviaCompanies = (List<Map<String, Object>>) bonusesWithAvia.get("avia_companies");
+
+        if (aviaCompanies == null || aviaCompanies.isEmpty()) {
+            System.out.println("No avia companies found.");
+            return;
+        }
+
+        System.out.println("=== Avia Company IDs ===");
+        for (Map<String, Object> avia : aviaCompanies) {
+            Object idObj = avia.get("id");
+            if (idObj instanceof Number) {
+                long id = ((Number) idObj).longValue();
+                System.out.println("ID: " + id);
+            } else {
+                System.out.println("Invalid or missing ID: " + idObj);
+            }
+        }
+    }
+
+    public Map<String, Object> getAllBonusesWithAvia(Long clientId) {
         List<Bonus> bonuses = bonusRepository.findAllByClientId(clientId);
+
         if (bonuses.isEmpty()) {
-            return Collections.emptyList();
+            Map<String, Object> emptyResponse = new HashMap<>();
+            emptyResponse.put("bonuses", Collections.emptyList());
+            emptyResponse.put("avia_companies", Collections.emptyList());
+            return emptyResponse;
         }
 
         List<BonusDTO> bonusDTOs = bonuses.stream()
@@ -66,9 +98,11 @@ public class BonusService {
                 })
                 .collect(Collectors.toList());
 
-        List<List<?>> combined = new ArrayList<>();
-        combined.add(bonusDTOs);
-        combined.add(aviaCompanies);
-        return combined;
+        Map<String, Object> response = new HashMap<>();
+        response.put("bonuses", bonusDTOs);
+        response.put("avia_companies", aviaCompanies);
+
+        return response;
     }
+
 }
