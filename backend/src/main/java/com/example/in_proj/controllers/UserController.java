@@ -133,7 +133,7 @@ public class UserController {
 
             return ResponseEntity.ok(response);
         } else {
-            response.put("message", "Invalid email or password.");
+            response.put("message", "User with such email and/or password doesn't exist.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
