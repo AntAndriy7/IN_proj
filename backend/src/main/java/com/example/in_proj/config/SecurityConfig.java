@@ -28,7 +28,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/static/**", "/avia.png").permitAll()
+                        .requestMatchers("/", "/index.html", "/static/**", "/plane.svg").permitAll()
                         .requestMatchers("/vite.svg", "/assets/**").permitAll()
                         .requestMatchers("/api/flight/status", "/api/plane/opensky").permitAll()
                         .requestMatchers("/api/user/login").permitAll()
