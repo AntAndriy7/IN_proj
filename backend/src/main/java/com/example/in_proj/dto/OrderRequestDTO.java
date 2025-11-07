@@ -4,13 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class TicketDTO {
-    private long id;
-    private long order_id;
-    private String name;
-    private boolean adult;
+public class OrderRequestDTO {
+    private OrderDTO order;
+    private List<TicketDTO> tickets;
+    private Long usedBonuses;
 }
-

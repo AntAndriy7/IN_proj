@@ -17,4 +17,7 @@ public class Plane {
 
     @Column(name = "seats_number")
     private long seats_number;
+
+    @Column(name = "avia_id")
+    private long avia_id;
 }

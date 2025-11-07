@@ -1,6 +1,8 @@
 package com.example.in_proj.controllers;
 
 import com.example.in_proj.auth.JwtUtil;
+import com.example.in_proj.dto.OrderRequestDTO;
+import com.example.in_proj.dto.TicketDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,14 +38,19 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createOrder(@RequestBody OrderDTO orderDTO, @RequestParam List<String> tickets,
-                                         @RequestParam(required = false) Long usedBonuses,
+    public ResponseEntity<?> createOrder(@RequestBody OrderRequestDTO request,
                                          @RequestHeader("Authorization") String authHeader) {
+
         String token = authHeader.replace("Bearer ", "");
         Map<String, Object> response = new HashMap<>();
 
         try {
-            OrderDTO order = orderService.addOrder(JwtUtil.getId(token), orderDTO, tickets, usedBonuses);
+            OrderDTO order = orderService.addOrder(
+                    JwtUtil.getId(token),
+                    request.getOrder(),
+                    request.getTickets(),
+                    request.getUsedBonuses() == null ? 0L : request.getUsedBonuses()
+            );
 
             return ResponseEntity.ok(order);
 

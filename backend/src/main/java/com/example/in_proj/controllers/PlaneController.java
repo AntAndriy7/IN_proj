@@ -1,5 +1,6 @@
 package com.example.in_proj.controllers;
 
+import com.example.in_proj.auth.JwtUtil;
 import com.example.in_proj.dto.OpenSkyPlaneDTO;
 import com.example.in_proj.dto.PlaneDTO;
 import com.example.in_proj.services.PlaneService;
@@ -20,8 +21,9 @@ public class PlaneController {
     private final PlaneService planeService;
 
     @GetMapping
-    public ResponseEntity<?> getAllPlanes() {
-        List<PlaneDTO> planes = planeService.getAllPlanes();
+    public ResponseEntity<?> getAllPlanes(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        List<PlaneDTO> planes = planeService.getPlanesByAviaId(JwtUtil.getId(token));
 
         if (planes.isEmpty()) {
             Map<String, Object> response = new HashMap<>();

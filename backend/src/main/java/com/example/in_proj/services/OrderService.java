@@ -51,14 +51,14 @@ public class OrderService {
         return combined;
     }
 
-    public OrderDTO addOrder(Long clientId, OrderDTO orderDTO, List<String> names, long usedBonuses) {
-        // Валідація списку імен
-        if (names == null || names.isEmpty()) {
+    public OrderDTO addOrder(Long clientId, OrderDTO orderDTO, List<TicketDTO> ticketsDTO, long usedBonuses) {
+        // Валідація списку квитків
+        if (ticketsDTO == null || ticketsDTO.isEmpty()) {
             throw new IllegalArgumentException("Tickets cannot be empty.");
         }
 
-        for (String name : names) {
-            nameValidation(name);
+        for (TicketDTO ticketDTO : ticketsDTO) {
+            nameValidation(ticketDTO.getName());
         }
 
         // Отримуємо рейс
@@ -69,10 +69,9 @@ public class OrderService {
         Plane plane = planeRepository.findById(flight.getPlane_id())
                 .orElseThrow(() -> new IllegalArgumentException("Plane not found with ID: " + flight.getPlane_id()));
 
-        long tickets_price = flight.getTicket_price() * names.size();
+        long tickets_price = flight.getTicket_price() * ticketsDTO.size();
 
         if (usedBonuses != 0) {
-            // Отримуємо bonus
             Bonus bonus = bonusRepository.findByUserIdAndAviaId(clientId, flight.getAvia_id());
             if (bonus == null) {
                 throw new IllegalArgumentException("Bonus not found!");
@@ -88,63 +87,51 @@ public class OrderService {
             bonusRepository.save(bonus);
         }
 
-        // Перевіряємо наявність достатньої кількості місць
-        List<Long> occupiedSeats = getOccupiedSeatsForFlight(flight.getId());
-        long availableSeats = plane.getSeats_number() - occupiedSeats.size();
-        if (availableSeats < names.size()) {
+        // Перевірка наявності місць
+        long existingTicketsCount = getOccupiedSeatCount(flight.getId());
+        long availableSeats = plane.getSeats_number() - existingTicketsCount;
+        if (availableSeats < ticketsDTO.size()) {
             throw new IllegalArgumentException("Not enough seats available.");
         }
 
         orderDTO.setClient_id(clientId);
-        orderDTO.setTicket_quantity(names.size());
+        orderDTO.setTicket_quantity(ticketsDTO.size());
         orderDTO.setTotal_price(tickets_price - usedBonuses);
         orderDTO.setPayment_status("booked");
 
-        // Створюємо замовлення
+        // Зберігаємо замовлення
         Order order = mapper.toEntity(orderDTO);
-        //order.setTotal_price(flight.getTicket_price() * names.size());
         order = orderRepository.save(order);
-
-        // Генеруємо список доступних номерів місць
-        List<Long> availableSeatNumbers = new ArrayList<>();
-        for (long i = 1; i <= plane.getSeats_number(); i++) {
-            if (!occupiedSeats.contains(i)) {
-                availableSeatNumbers.add(i);
-            }
-        }
 
         // Створюємо квитки
         List<Ticket> tickets = new ArrayList<>();
-        for (int i = 0; i < names.size(); i++) {
+        for (TicketDTO ticketDTO : ticketsDTO) {
             Ticket ticket = new Ticket();
             ticket.setOrder_id(order.getId());
-            ticket.setName(names.get(i));
-            ticket.setSeat_number(availableSeatNumbers.get(i));
+            ticket.setName(ticketDTO.getName());
+            ticket.setAdult(ticketDTO.isAdult());
             tickets.add(ticket);
             flight.setOccupied_seats(flight.getOccupied_seats() + 1);
         }
 
-        // Зберігаємо квитки
         ticketRepository.saveAll(tickets);
-
-        // Оновлюємо потяг з новими даними occupied_seats
         flightRepository.save(flight);
 
-        // Повертаємо DTO
         return mapper.toDTO(order);
     }
 
-    public List<Long> getOccupiedSeatsForFlight(Long flightId) {
+    public long getOccupiedSeatCount(Long flightId) {
         List<Order> bookedOrders = orderRepository.findByFlight_idPayment_status(flightId, Arrays.asList("booked", "paid"));
 
-        List<Long> occupiedSeats = new ArrayList<>();
+        long occupiedCount = 0;
         for (Order order : bookedOrders) {
             List<Ticket> tickets = ticketRepository.findByOrder_id(order.getId());
-            tickets.forEach(ticket -> occupiedSeats.add(ticket.getSeat_number()));
+            occupiedCount += tickets.size();
         }
 
-        return occupiedSeats;
+        return occupiedCount;
     }
+
 
     public OrderDTO updateOrder(Long id, OrderDTO orderDTO, Long idFromToken) {
         Order existingOrder = orderRepository.findById(id).orElse(null);

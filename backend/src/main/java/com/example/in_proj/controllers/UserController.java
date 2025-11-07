@@ -74,8 +74,7 @@ public class UserController {
 
         if (users.isEmpty()) {
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("message", "No customers were found on the airline with '"
-                    + JwtUtil.getId(token) + "'.");
+            errorResponse.put("message", "No customers found.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
 
@@ -99,7 +98,9 @@ public class UserController {
     public ResponseEntity<?> createUser(@RequestBody UserDTO userDTO) {
         try {
             Map<String, Object> user = userService.createUser(userDTO);
-            return ResponseEntity.ok(user);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("message", e.getMessage());

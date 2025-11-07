@@ -67,7 +67,7 @@ public class FlightController {
         try {
             FlightDTO flight = flightService.createFlight(flightDTO, JwtUtil.getId(token));
 
-            return ResponseEntity.ok(flight);
+            return ResponseEntity.status(HttpStatus.CREATED).body(flight);
 
         } catch (IllegalArgumentException e) {
             Map<String, Object> errorResponse = new HashMap<>();

@@ -308,7 +308,7 @@ public class UserService {
             return response;
         } else if (existingUser.is_deleted()) {
             response.put("status", HttpStatus.BAD_REQUEST.value());
-            response.put("message", "User with ID '" + id + "' already deactivated");
+            response.put("message", "User with ID '" + id + "' already deactivated.");
             return response;
         }
 
@@ -317,7 +317,7 @@ public class UserService {
         userRepository.save(existingUser);
 
         response.put("status", HttpStatus.OK.value());
-        response.put("message", "User '" + existingUser.getEmail() + "' successfully deactivated");
+        response.put("message", "User '" + existingUser.getEmail() + "' successfully deactivated.");
 
         return response;
     }

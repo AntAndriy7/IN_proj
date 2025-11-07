@@ -36,8 +36,8 @@ public class PlaneService {
                 .orElse(null);
     }
 
-    public List<PlaneDTO> getAllPlanes() {
-        return planeRepository.findAll().stream()
+    public List<PlaneDTO> getPlanesByAviaId(Long aviaId) {
+        return planeRepository.findByAvia_id(aviaId).stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
     }
@@ -86,6 +86,7 @@ public class PlaneService {
     public PlaneDTO createPlane(PlaneDTO planeDTO) {
         String model = planeDTO.getModel();
         Long seats_number = planeDTO.getSeats_number();
+        Long avia_id = planeDTO.getAvia_id();
 
         if(model == null || model.isBlank()) {
             throw new IllegalArgumentException("Model name cannot be empty.");
@@ -97,6 +98,10 @@ public class PlaneService {
 
         if (seats_number <= 10 || seats_number >= 860) {
             throw new IllegalArgumentException("Number of seats must be in the range 10-860.");
+        }
+
+        if (avia_id <= 0) {
+            throw new IllegalArgumentException("Avia ID cannot be empty or invalid.");
         }
 
         if (planeRepository.findByModel(planeDTO.getModel()) != null) {

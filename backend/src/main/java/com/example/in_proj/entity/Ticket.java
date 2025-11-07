@@ -18,6 +18,6 @@ public class Ticket {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "seat_number")
-    private long seat_number;
+    @Column(name = "is_adult")
+    private Boolean adult;
 }
