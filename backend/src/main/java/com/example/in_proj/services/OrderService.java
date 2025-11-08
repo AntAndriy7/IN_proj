@@ -51,6 +51,25 @@ public class OrderService {
         return combined;
     }
 
+    public Map<String, Object> getOrderById(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) return null;
+
+        OrderDTO orderDTO = mapper.toDTO(order);
+
+        List<TicketDTO> tickets = ticketService.getTicketsByOrderId(orderId);
+
+        Long flightId = order.getFlight_id();
+        Map<String, Object> flightData = flightService.getAllFlightsCombined(Set.of(flightId));
+
+        Map<String, Object> combined = new HashMap<>();
+        combined.put("order", orderDTO);
+        combined.put("tickets", tickets);
+        combined.put("flightData", flightData);
+
+        return combined;
+    }
+
     public OrderDTO addOrder(Long clientId, OrderDTO orderDTO, List<TicketDTO> ticketsDTO, long usedBonuses) {
         // Валідація списку квитків
         if (ticketsDTO == null || ticketsDTO.isEmpty()) {
