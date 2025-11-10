@@ -4,7 +4,6 @@ import logoImage from "../resources/plane-icon.png";
 import cabinetImageCab from "../resources/cabinet.png";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode";
 import MyFlights from "./MyFlights";
 import PersonalInformation from "./PersonalInformation";
 import MyBonuses from "./MyBonuses";
@@ -37,31 +36,36 @@ function Cabinet() {
         const token = localStorage.getItem('jwtToken');
         if (!token) return;
 
-        try {
-            const decoded = jwtDecode(token);
-            const userId = decoded.id;
+        fetch(`http://localhost:8080/api/user`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
 
-            fetch(`http://localhost:8080/api/user/${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
+                if (!response.ok) {
+                    const errorMessage = data?.message || 'Failed to fetch user';
+                    throw new Error(errorMessage);
+                }
+
+                return data;
             })
-                .then(response => response.json())
-                .then(data => {
-                    const [name, surname] = data.name.split(' ');
-                    setUser({
-                        name,
-                        surname,
-                        email: data.email,
-                        phoneNumber: data.phoneNumber
-                    });
-                })
-                .catch(() => setError('Failed to fetch user data'));
-        } catch (err) {
-            console.error('Invalid token');
-        }
+            .then(data => {
+                const [name, surname] = data.name.split(' ');
+                setUser({
+                    name,
+                    surname,
+                    email: data.email,
+                    phoneNumber: data.phoneNumber
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching user:', error);
+                setError(error.message || 'Failed to fetch user');
+            });
     };
 
     useEffect(() => {

@@ -12,28 +12,26 @@ function Clients() {
     const token = localStorage.getItem('jwtToken');
     const navigate = useNavigate();
 
-    const fetchUsers = () => {
-        const decoded = jwtDecode(token);
-        const userId = decoded.id;
+    const [bonusErrors, setBonusErrors] = useState({});
 
-        fetch(`http://localhost:8080/api/user/avia/${userId}`, {
+    const fetchUsers = () => {
+        fetch(`http://localhost:8080/api/user/avia`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
         })
-            .then(response => {
-                if (response.status === 404) {
-                    setError("No clients yet.");
-                    setUsers([]);
-                    return null;
-                }
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch users');
+                    const errorMessage = data?.message || 'Failed to fetch users';
+                    setUsers([]);
+                    throw new Error(errorMessage);
                 }
-                return response.json();
+
+                return data;
             })
             .then(data => {
                 if (!data) return;
@@ -42,27 +40,30 @@ function Clients() {
             })
             .catch(err => {
                 console.error('Error fetching users:', err);
-                setError('Failed to fetch users');
+                setError(err.message || 'Failed to fetch users');
             });
     };
 
     const handleSend = async (userId) => {
+        setBonusErrors({});
+
         const inputValue = bonusValues[userId];
+        const newErrors = {};
 
         if (!inputValue || inputValue.trim() === "") {
-            alert("Please enter a bonus value.");
+            newErrors[userId] = "Please enter a bonus value.";
+            setBonusErrors(newErrors);
             return;
         }
 
         const amount = parseInt(inputValue, 10);
         if (isNaN(amount) || amount <= 0) {
-            alert("Please enter a valid whole number greater than zero.");
+            newErrors[userId] = "Please enter a valid whole number greater than zero.";
+            setBonusErrors(newErrors);
             return;
         }
 
         const token = localStorage.getItem("jwtToken");
-        const decoded = jwtDecode(token);
-        const aviaId = decoded.id;
 
         try {
             const response = await fetch("http://localhost:8080/api/bonus", {
@@ -72,22 +73,22 @@ function Clients() {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    avia_id: aviaId,
                     client_id: userId,
                     bonus_count: amount,
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error("Failed to update or create bonus");
-            }
+            const data = await response.json().catch(() => null);
 
-            const updated = await response.json();
+            if (!response.ok) {
+                const errorMessage = data?.message || 'Failed to send bonuses';
+                throw new Error(errorMessage);
+            }
 
             setUsers(prevUsers =>
                 prevUsers.map(item =>
                     item.id === userId
-                        ? { ...item, bonus_count: updated.bonus_count }
+                        ? { ...item, bonus_count: data.bonus_count }
                         : item
                 )
             );
@@ -97,10 +98,10 @@ function Clients() {
                 [userId]: ""
             }));
 
-            alert("Bonuses updated successfully!");
         } catch (error) {
             console.error("Error updating bonuses:", error);
-            alert("Something went wrong while updating bonuses.");
+            newErrors[userId] = error.message || `Something went wrong while updating bonuses.`;
+            setBonusErrors(newErrors);
         }
     };
 
@@ -109,11 +110,12 @@ function Clients() {
     }, []);
 
     useEffect(() => {
-        const decoded = jwtDecode(token);
-        const aviaRole = decoded.role;
-        
-        if (aviaRole !== 'AVIA') {
-            navigate('/avia/main');
+        if (token) {
+            const decoded = jwtDecode(token);
+            const aviaRole = decoded.role;
+            if (aviaRole !== 'AVIA') {
+                navigate('/avia/main');
+            }
         }
     }, [navigate, token]);
 
@@ -154,14 +156,18 @@ function Clients() {
                                         className="add-bonus-input no-spinner"
                                         placeholder="Bonus amount"
                                         value={bonusValues[user.id] || ""}
-                                        onChange={(e) =>
-                                            setBonusValues({ ...bonusValues, [user.id]: e.target.value })
-                                        }
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (/^\d{0,5}$/.test(value)) {
+                                                setBonusValues({ ...bonusValues, [user.id]: value })
+                                            }
+                                        }}
                                     />
                                     <button className="order-home-button" onClick={() => handleSend(user.id)}>
                                         Send
                                     </button>
                                 </div>
+                                {bonusErrors[user.id] && <p className="bonus-error">{bonusErrors[user.id]}</p>}
                             </div>
                         </div>
                     ))}

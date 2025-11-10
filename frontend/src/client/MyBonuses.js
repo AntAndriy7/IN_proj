@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from 'react';
 import '../styles/Home.css';
-import {jwtDecode} from "jwt-decode";
 
 function MyBonuses() {
     const [bonuses, setBonuses] = useState([]);
@@ -9,11 +8,9 @@ function MyBonuses() {
 
     const fetchBonuses = async () => {
         const token = localStorage.getItem('jwtToken');
-        const decoded = jwtDecode(token);
-        const userId = decoded.id;
 
         try {
-            const response = await fetch(`http://localhost:8080/api/bonus/client/${userId}`, {
+            const response = await fetch(`http://localhost:8080/api/bonus/client`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -21,27 +18,24 @@ function MyBonuses() {
                 },
             });
 
-            if (response.status === 404) {
-                setError("You have no bonuses yet.");
-                return;
-            }
+            const data = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error('Failed to fetch bonuses');
+                const errorMessage = data?.message || 'Failed to fetch bonuses';
+                throw new Error(errorMessage);
             }
 
-            const data = await response.json();
-            setBonuses(data[0]);
+            setBonuses(data.bonuses || []);
 
             const namesMap = {};
-            data[1].forEach(company => {
+            (data.avia_companies || []).forEach(company => {
                 namesMap[company.id] = company.name;
             });
             setAviaNames(namesMap);
 
         } catch (err) {
-            setError(err);
             console.error('Error fetching bonuses or avia companies:', err);
+            setError(err.message || 'Failed to fetch bonuses');
         }
     };
 

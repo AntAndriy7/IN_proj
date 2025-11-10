@@ -9,7 +9,7 @@ function Order({flight}) {
     const token = localStorage.getItem('jwtToken');
     const [error, setError] = useState(null);
     const [useMyData, setUseMyData] = useState(false);
-    const [tickets, setTickets] = useState([{ name: '', surname: '' }]);
+    const [tickets, setTickets] = useState([{ name: '', surname: '', is_adult: true }]);
     const [orderMessage, setOrderMessage] = useState('');
     const [bonus, setBonus] = useState(null);
     const [usedBonuses, setUsedBonuses] = useState(0);
@@ -26,21 +26,13 @@ function Order({flight}) {
     ];
 
     useEffect(() => {
-        if (!token) {
-            navigate('/login');
-        }
-        else {
-            fetchBonus();
-        }
-    }, [token, navigate]);
+        fetchBonus();
+    }, [token]);
 
     const fetchBonus = async () => {
-        const decodedToken = jwtDecode(token);
-        const userId = decodedToken.id;
-
         try {
             const response = await fetch(
-                `http://localhost:8080/api/bonus/client/${userId}/avia/${flight.avia_id}`,
+                `http://localhost:8080/api/bonus/client/avia/${flight.avia_id}`,
                 {
                     method: 'GET',
                     headers: {
@@ -86,13 +78,13 @@ function Order({flight}) {
         if (!useMyData) {
             setTickets((prevTickets) => {
                 const updatedTickets = [...prevTickets];
-                updatedTickets[0] = { name: myName, surname: mySurname };
+                updatedTickets[0] = { name: myName, surname: mySurname, is_adult: true };
                 return updatedTickets;
             });
         } else {
             setTickets((prevTickets) => {
                 const updatedTickets = [...prevTickets];
-                updatedTickets[0] = { name: '', surname: '' };
+                updatedTickets[0] = { name: '', surname: '' , is_adult: true };
                 return updatedTickets;
             });
         }
@@ -100,7 +92,7 @@ function Order({flight}) {
 
     const handleAddTicket = () => {
         if (tickets.length < 8) {
-            setTickets([...tickets, { name: '', surname: '' }]);
+            setTickets([...tickets, { name: '', surname: '', is_adult: true }]);
         }
     };
 
@@ -119,56 +111,88 @@ function Order({flight}) {
             return;
         }
 
-        const token = localStorage.getItem('jwtToken');
+        const hasAdult = tickets.some(ticket => ticket.is_adult);
+        if (!hasAdult) {
+            setOrderMessage('At least one passenger must be an adult (14+ y.o.).');
+            return;
+        }
+
+        const totalCost = flight.ticket_price * tickets.length;
+        const maxAllowed = totalCost * 0.5;
+
+        if (usedBonuses > 0 && usedBonuses < 10) {
+            setOrderMessage('You must use at least 10 bonuses if applying bonuses.');
+            return;
+        }
+
+        if (usedBonuses > maxAllowed) {
+            setOrderMessage(`Used bonuses cannot exceed 50% of the total order amount (${Math.floor(maxAllowed)} bonuses maximum).`);
+            return;
+        }
+
         if (token) {
             try {
                 const decoded = jwtDecode(token);
                 const userId = decoded.id;
 
-                await fetch(`http://localhost:8080/api/order?tickets=${getFormattedNames().join(',')}&usedBonuses=${usedBonuses}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        client_id: userId,
-                        flight_id: flight.id,
-                        ticket_quantity: tickets.length,
-                        total_price: getTotalPrice(),
-                        payment_status: 'booked',
-                    }),
-                });
+                const formattedTickets = tickets.map(ticket => ({
+                    name: `${ticket.name} ${ticket.surname}`.trim().toUpperCase(),
+                    adult: ticket.is_adult
+                }));
+
+                const res = await fetch(
+                    `http://localhost:8080/api/order`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            order: { flight_id: flight.id },
+                            tickets: formattedTickets,
+                            usedBonuses: usedBonuses
+                        }),
+                    }
+                );
+
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    const errorMessage = data?.message || 'Failed to place order';
+                    throw new Error(errorMessage);
+                }
 
                 setOrderMessage('Order placed successfully!');
                 navigate('/cabinet');
-            } catch (error) {
-                console.error('Failed to place order:', error);
-                setOrderMessage('Failed to place order.');
+            } catch (err) {
+                console.error('Failed to place order:', err);
+                setOrderMessage(err.message || 'Failed to place order');
             }
         }
-    }
+    };
 
     const handleTicketChange = (index, field, value) => {
-        const cleanedValue = value
-            .replace(/[^a-zA-Z' -]/g, '')
-            .replace(/\s{2,}/g, ' ')
-            .slice(0, 100)
-            .toUpperCase();
+        const updatedTickets = tickets.map((ticket, i) => {
+            if (i !== index) return ticket;
 
-        const updatedTickets = tickets.map((ticket, i) =>
-            i === index ? { ...ticket, [field]: cleanedValue } : ticket
-        );
+            if (field === 'is_adult') {
+                return { ...ticket, is_adult: value };
+            }
+
+            const cleanedValue = value
+                .replace(/[^a-zA-Z' -]/g, '')
+                .replace(/\s{2,}/g, ' ')
+                .slice(0, 100)
+                .toUpperCase();
+
+            return { ...ticket, [field]: cleanedValue };
+        });
 
         setTickets(updatedTickets);
     };
 
     const handleRemoveTicket = (index) => {
         setTickets(tickets.filter((_, i) => i !== index));
-    };
-
-    const getFormattedNames = () => {
-        return tickets.map(ticket => `${ticket.name} ${ticket.surname}`.toUpperCase());
     };
 
     return (
@@ -294,6 +318,17 @@ function Order({flight}) {
                                                             onChange={(e) => handleTicketChange(index, 'surname', e.target.value)}
                                                             disabled={useMyData && index === 0}
                                                         />
+                                                    </label>
+                                                    <label className="adult-checkbox">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={ticket.is_adult}
+                                                            onChange={(e) =>
+                                                                handleTicketChange(index, 'is_adult', e.target.checked)
+                                                            }
+                                                        />
+                                                        <span className="checkbox-box-adult"></span>
+                                                        <span>Adult (14+ y.o.)</span>
                                                     </label>
                                                 </div>
                                             </div>

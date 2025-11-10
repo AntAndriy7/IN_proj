@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
-import { addYears } from "date-fns";
+import { addYears, subYears } from "date-fns";
 import { IoCalendarOutline } from "react-icons/io5";
 import "react-datepicker/dist/react-datepicker.css";
 import "../styles/Home.css";
 import "../styles/DateInput.css";
 
-export default function DateRangeInput({ filter, setFilter, onFilterChange, disabled }) {
+export default function DateRangeInput({ filter, setFilter, onFilterChange, disabled, allowPastDates = false }) {
     const [hoverDate, setHoverDate] = useState(null);
     const [activeCalendar, setActiveCalendar] = useState(null);
 
-    const minDate = new Date();
+    const minDate = allowPastDates ? subYears(new Date(), 10) : new Date();
     const maxDate = addYears(new Date(), 1);
 
     const dateToLocalString = (date) => {
@@ -176,6 +176,7 @@ export default function DateRangeInput({ filter, setFilter, onFilterChange, disa
                     disabled={disabled}
                     startDate={from}
                     endDate={to}
+                    calendarStartDay={1}
                 />
                 <IoCalendarOutline className="calendar-icon" />
             </div>
@@ -205,6 +206,7 @@ export default function DateRangeInput({ filter, setFilter, onFilterChange, disa
                     disabled={disabled}
                     startDate={from}
                     endDate={to}
+                    calendarStartDay={1}
                 />
                 <IoCalendarOutline className="calendar-icon" />
             </div>

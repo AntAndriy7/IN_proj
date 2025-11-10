@@ -2,7 +2,7 @@ import React, {useState} from "react";
 import Select from "react-select";
 import "../styles/AirportSelect.css";
 
-const AirportSelect = ({ airports, value, onChange, placeholder, disabled = false, maxInputLength = 42 }) => {
+const AirportSelect = ({ airports, value, onChange, placeholder, disabled = false, maxInputLength = 42, fontSize = "14px" }) => {
     const [isHovered, setIsHovered] = useState(false);
 
     const groupedOptions = Object.values(
@@ -86,7 +86,7 @@ const AirportSelect = ({ airports, value, onChange, placeholder, disabled = fals
                         boxShadow: state.isFocused ? "0 0 0 1px #ffdd2d" : "none",
                         minHeight: "42px",
                         color: "#fff",
-                        fontSize: "14px",
+                        fontSize: fontSize,
                         transition: "box-shadow 0.1s",
                         cursor: "pointer",
                     }),
@@ -103,7 +103,8 @@ const AirportSelect = ({ airports, value, onChange, placeholder, disabled = fals
                         backgroundColor: "#2b2b2b",
                         color: "#fff",
                         borderRadius: "8px",
-                        marginTop: "4px",
+                        border: "1px solid #ffdd2d !important",
+                        marginTop: "10px",
                         boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
                         overflow: "hidden",
                         width: "100%",

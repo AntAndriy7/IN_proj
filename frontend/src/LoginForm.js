@@ -47,9 +47,9 @@ function LoginForm() {
             return;
         }
 
-        const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z]).{6,}$/;
+        const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
         if (!passwordPattern.test(password)) {
-            setPassError('Password must be at least 6 characters long, containing at least one uppercase and one lowercase letter.');
+            setPassError('Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.');
             return;
         }
 
@@ -65,19 +65,24 @@ function LoginForm() {
             },
             body: JSON.stringify(userData)
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.token) {
-                    localStorage.setItem('jwtToken', data.token);
-                    console.log(data.token);
-                    navigateBasedOnRole(data.token);
-                } else {
-                    setFillError("User with such email and/or password doesn't exist.")
-                    console.error('Login failed:', data.error);
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    const errorMessage = data?.message || 'Failed to login';
+                    throw new Error(errorMessage);
                 }
+
+                return data;
+            })
+            .then(data => {
+                localStorage.setItem('jwtToken', data.token);
+                console.log(data.token);
+                navigateBasedOnRole(data.token);
             })
             .catch(error => {
                 console.error('Error:', error);
+                setFillError(error.message || 'Failed to login');
             });
     };
 
@@ -107,7 +112,27 @@ function LoginForm() {
     return (
         <div className={styles.container}>
             <div className={styles.form}>
-                <div className={styles.logoContainer} title="Home" onClick={() => navigate('/main')}>
+                <div className={styles.logoContainer} title="Home" onClick={() => {
+                    const token = localStorage.getItem('jwtToken');
+                    if (token) {
+                        const decodedToken = jwtDecode(token);
+                        const { role } = decodedToken;
+
+                        if (role === 'ADMIN') {
+                            navigate('/admin/main');
+                        }
+                        else if (role === 'AVIA' || role === 'AVIA-temp') {
+                            navigate('/avia/main');
+                        }
+                        else {
+                            navigate('/main');
+                        }
+                    }
+                    else {
+                        navigate('/main');
+                    }
+                }}
+                >
                     <div className={styles.logo}>
                         <span>Kyiv</span>
                         <span>International</span>

@@ -1,10 +1,11 @@
-import React, {useEffect, useState} from 'react';
-import { jwtDecode } from "jwt-decode";
+import React, {useEffect, useRef, useState} from 'react';
 import '../styles/Main.css';
 import '../styles/Home.css';
 import AirportSelect from "../components/AirportSelect.js";
 import FlightFilter from "../components/FlightFilter.js";
 import PlaneSelect from "../components/PlaneSelect.js";
+import DateTime from "../components/DateTime";
+import {addDays} from "date-fns";
 
 function Add() {
     const [filter, setFilter] = useState({
@@ -31,37 +32,73 @@ function Add() {
     const [planesArr, setPlanesArr] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const [fillError, setFillError] = useState('');
+    const [routeError, setRouteError] = useState('');
+    const [departureError, setDepartureError] = useState('');
+    const [arrivalError, setArrivalError] = useState('');
+    const [priceError, setPriceError] = useState('');
+
+    const routeErrorRef = useRef(null);
+    const fillErrorRef = useRef(null);
+    const departureErrorRef = useRef(null);
+    const arrivalErrorRef = useRef(null);
+    const priceErrorRef = useRef(null);
+    const [errorTrigger, setErrorTrigger] = useState(0);
+
+    useEffect(() => {
+        if (fillError && fillErrorRef.current) {
+            fillErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (routeError && routeErrorRef.current) {
+            routeErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (departureError && departureErrorRef.current) {
+            departureErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (arrivalError && arrivalErrorRef.current) {
+            arrivalErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (priceError && priceErrorRef.current) {
+            priceErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [fillError, routeError, departureError, arrivalError, priceError, errorTrigger]);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const token = localStorage.getItem('jwtToken');
 
                 const airportsResponse = await fetch('http://localhost:8080/api/airport', {
+                    method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                     }
                 });
 
-                if (airportsResponse.ok) {
-                    const airportsData = await airportsResponse.json();
-                    setAirports(airportsData);
+                const airportData = await airportsResponse.json().catch(() => null);
+
+                if (!airportsResponse.ok) {
+                    const errorMessage = airportData?.message || 'Failed to fetch airports';
+                    throw new Error(errorMessage);
                 }
+
+                setAirports(airportData);
 
                 const planesResponse = await fetch('http://localhost:8080/api/plane', {
+                    method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                     }
                 });
 
-                if (planesResponse.ok) {
-                    const planesData = await planesResponse.json();
-                    setPlanesArr(planesData);
+                const planeData = await planesResponse.json().catch(() => null);
+
+                if (!planesResponse.ok) {
+                    const errorMessage = airportData?.message || 'Failed to fetch planes';
+                    throw new Error(errorMessage);
                 }
+
+                setPlanesArr(planeData);
 
                 setLoading(false);
             } catch (error) {
-                console.error('Error fetching data:', error);
-                alert('Error loading data. Please try again.');
+                console.error(error.message || `Error fetching data`);
                 setLoading(false);
             }
         };
@@ -69,30 +106,32 @@ function Add() {
         fetchData();
     }, []);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
+    const handlePriceChange = (value) => {
+        setFormValues(prev => ({ ...prev, ticket_price: value }));
+    };
 
+    const handleDateChange = (field, value) => {
         setFormValues((prev) => {
-            let updated = { ...prev, [name]: value };
+            let updated = { ...prev, [field]: value };
 
             const depDateTime = new Date(`${updated.departure_date}T${updated.departure_time || '00:00'}`);
             const arrDateTime = new Date(`${updated.arrival_date}T${updated.arrival_time || '00:00'}`);
 
-            if (name === "departure_date") {
+            if (field === "departure_date") {
                 if (updated.arrival_date && depDateTime > arrDateTime) {
                     updated.arrival_date = updated.departure_date;
                     updated.arrival_time = updated.departure_time || '00:00';
                 }
             }
 
-            if (name === "arrival_date") {
+            if (field === "arrival_date") {
                 if (updated.departure_date && arrDateTime < depDateTime) {
                     updated.departure_date = updated.arrival_date;
                     updated.departure_time = updated.arrival_time || '00:00';
                 }
             }
 
-            if (name === "departure_time") {
+            if (field === "departure_time") {
                 if (updated.arrival_date && updated.arrival_time) {
                     const dep = new Date(`${updated.departure_date}T${value}`);
                     const arr = new Date(`${updated.arrival_date}T${updated.arrival_time}`);
@@ -102,7 +141,7 @@ function Add() {
                 }
             }
 
-            if (name === "arrival_time") {
+            if (field === "arrival_time") {
                 if (updated.departure_date && updated.departure_time) {
                     const dep = new Date(`${updated.departure_date}T${updated.departure_time}`);
                     const arr = new Date(`${updated.arrival_date}T${value}`);
@@ -117,22 +156,31 @@ function Add() {
     };
 
     const handleConfirmAdd = async () => {
+        setFillError('');
+        setRouteError('');
+        setDepartureError('');
+        setArrivalError('');
+        setPriceError('');
+
         const { departure_id, destination_id, plane_id, departure_date, departure_time,
             arrival_date, arrival_time, ticket_price } = formValues;
 
         if (!departure_id || !destination_id || !plane_id || !departure_date || !departure_time ||
             !arrival_date || !arrival_time || !ticket_price) {
-            alert('Please fill in all fields.');
+            setFillError('Please fill in all fields.');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         if (Number(departure_id) === Number(destination_id)) {
-            alert('Departure and destination airports cannot be the same.');
+            setRouteError('Departure and destination airports cannot be the same.');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         if (Number(departure_id) !== 1 && Number(destination_id) !== 1) {
-            alert('Either departure or destination airport must be IEV.');
+            setRouteError('Either departure or destination airport must be IEV.');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
@@ -143,40 +191,42 @@ function Add() {
         const maxDurationMs = 24 * 60 * 60 * 1000;
         const duration = arrivalDateTime - departureDateTime;
 
+        const now = new Date();
+        if (departureDateTime - now < 24 * 60 * 60 * 1000) {
+            setDepartureError('Departure date/time must be at least 24 hours from now.');
+            setErrorTrigger(prev => prev + 1);
+            return;
+        }
+
         if (duration < minDurationMs) {
-            alert('Flight duration is too short. Minimum duration is 30 minutes.');
+            setArrivalError('Flight duration is too short. Minimum duration is 30 minutes.');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         if (duration > maxDurationMs) {
-            alert('Flight duration is too long. Maximum duration is 24 hours.');
+            setArrivalError('Flight duration is too long. Maximum duration is 24 hours.');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         if (departureDateTime >= arrivalDateTime) {
-            alert('Departure date/time must be earlier than arrival date/time.');
-            return;
-        }
-
-        const now = new Date();
-        if (departureDateTime - now < 24 * 60 * 60 * 1000) {
-            alert('Departure date/time must be at least 24 hours from now.');
+            setArrivalError('Departure date/time must be earlier than arrival date/time.');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         const minPrice = 50;
         if (Number(ticket_price) < minPrice) {
-            alert(`Ticket price must be at least ${minPrice} UAH.`);
+            setPriceError(`Ticket price must be at least ${minPrice} UAH.`);
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         try {
             const token = localStorage.getItem('jwtToken');
-            const decoded = jwtDecode(token);
-            const aviaId = decoded.id;
 
             const requestBody = {
-                avia_id: aviaId,
                 departure_time: departure_time.length === 5 ? `${departure_time}:00` : departure_time,
                 arrival_time: arrival_time.length === 5 ? `${arrival_time}:00` : arrival_time,
                 departure_date: departure_date,
@@ -201,24 +251,16 @@ function Add() {
             });
 
             if (response.ok) {
-                alert('Flight added successfully!');
-                setFormValues({
-                    departure_id: '',
-                    destination_id: '',
-                    plane_id: '',
-                    departure_date: '',
-                    departure_time: '',
-                    arrival_date: '',
-                    arrival_time: '',
-                    ticket_price: '',
-                });
+                window.location.reload();
             } else {
-                const errorData = await response.json();
-                alert(`Failed to add flight: ${errorData.message || 'Try again.'}`);
+                const data = await response.json().catch(() => null);
+                const errorMessage = data?.message || 'Failed to fetch flights';
+                throw new Error(errorMessage);
             }
         } catch (error) {
             console.error('Error adding flight:', error);
-            alert("Error adding flight.");
+            setFillError(error.message || 'Failed to add flight');
+            setErrorTrigger(prev => prev + 1);
         }
     };
 
@@ -249,13 +291,13 @@ function Add() {
                                 <p className="add-flight-subtitle">Fill in the flight details below</p>
                             </div>
 
-                            <div className="form-section">
-                                <div className="section-title">
+                            <div className="edit-section">
+                                <div className="edit-section-title">
                                     Route Information
                                 </div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Departure Airport</label>
+                                <div className="edit-datetime-grid">
+                                    <div className="edit-field">
+                                        <label>Departure Airport</label>
                                         <AirportSelect
                                             airports={airports}
                                             value={formValues.departure_id}
@@ -264,10 +306,11 @@ function Add() {
                                                 setFormValues(prev => ({ ...prev, departure_id: val }));
                                             }}
                                             placeholder="Select departure airport"
+                                            fontSize = "16px"
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Destination Airport</label>
+                                    <div className="edit-field">
+                                        <label>Destination Airport</label>
                                         <AirportSelect
                                             airports={airports}
                                             value={formValues.destination_id}
@@ -276,17 +319,20 @@ function Add() {
                                                 setFormValues(prev => ({ ...prev, destination_id: val }));
                                             }}
                                             placeholder="Select destination airport"
+                                            fontSize = "16px"
                                         />
                                     </div>
                                 </div>
+
+                                {routeError && <p ref={routeErrorRef} className="error">{routeError}</p>}
                             </div>
 
-                            <div className="form-section">
-                                <div className="section-title">
+                            <div className="edit-section">
+                                <div className="edit-section-title">
                                     Aircraft Details
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Plane Model</label>
+                                <div className="edit-field">
+                                    <label>Plane Model</label>
                                     <PlaneSelect
                                         planes={planesArr}
                                         value={formValues.plane_id}
@@ -295,111 +341,20 @@ function Add() {
                                             setFormValues(prev => ({ ...prev, plane_id: val }));
                                         }}
                                         placeholder="Select plane model"
+                                        fontSize = "16px"
                                     />
                                 </div>
                             </div>
 
-                            <div className="form-section">
-                                <div className="section-title">
-                                    Departure Schedule
-                                </div>
-                                <div className="datetime-group">
-                                    <div className="form-group" lang="en">
-                                        <label className="form-label">Departure Date</label>
-                                        <input
-                                            type="date"
-                                            name="departure_date"
-                                            value={formValues.departure_date}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            max={new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-                                                .toISOString()
-                                                .split('T')[0]}
-                                            onChange={handleInputChange}
-                                            onKeyDown={(e) => e.preventDefault()}
-                                            className="form-input"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Departure Time</label>
-                                        <input
-                                            type="time"
-                                            name="departure_time"
-                                            value={formValues.departure_time}
-                                            onChange={handleInputChange}
-                                            className="form-input"
-                                            onKeyDown={(e) => e.preventDefault()}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="form-section">
-                                <div className="section-title">
-                                    Arrival Schedule
-                                </div>
-                                <div className="datetime-group">
-                                    <div className="form-group">
-                                        <label className="form-label">Arrival Date</label>
-                                        <input
-                                            type="date"
-                                            name="arrival_date"
-                                            value={formValues.arrival_date}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            max={new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-                                                .toISOString()
-                                                .split('T')[0]}
-                                            onChange={handleInputChange}
-                                            className="form-input"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Arrival Time</label>
-                                        <input
-                                            type="time"
-                                            name="arrival_time"
-                                            value={formValues.arrival_time}
-                                            onChange={handleInputChange}
-                                            className="form-input"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="form-section">
-                                <div className="section-title">
-                                    Pricing
-                                </div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Ticket Price (UAH)</label>
-                                        <input
-                                            type="number"
-                                            name="ticket_price"
-                                            placeholder="0"
-                                            value={formValues.ticket_price}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (/^\d{0,5}$/.test(value)) {
-                                                    handleInputChange(e);
-                                                }
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (!/[0-9]/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                            onPaste={(e) => {
-                                                const paste = e.clipboardData.getData('text');
-                                                if (/\D/.test(paste)) e.preventDefault();
-                                            }}
-                                            className="form-input no-spinner"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="action-buttons">
-                                <button className="btn btn-clear" onClick={() => {
+                            <DateTime
+                                updatedDepartureDate={formValues.departure_date}
+                                updatedDepartureTime={formValues.departure_time}
+                                updatedArrivalDate={formValues.arrival_date}
+                                updatedArrivalTime={formValues.arrival_time}
+                                updatedPrice={formValues.ticket_price}
+                                setUpdatedPrice={handlePriceChange}
+                                handleDateChange={handleDateChange}
+                                handleEdit={() => {
                                     setFormValues({
                                         departure_id: '',
                                         destination_id: '',
@@ -410,13 +365,24 @@ function Add() {
                                         arrival_time: '',
                                         ticket_price: '',
                                     });
-                                }}>
-                                    Clear
-                                </button>
-                                <button className="btn btn-primary" onClick={handleConfirmAdd}>
-                                    Confirm & Add Flight
-                                </button>
-                            </div>
+                                    setFillError('');
+                                    setRouteError('');
+                                    setDepartureError('');
+                                    setArrivalError('');
+                                    setPriceError('');
+                                    setErrorTrigger(0);
+                                }}
+                                handleSave={handleConfirmAdd}
+                                minDate={addDays(new Date(), 1)}
+                                fillError = {fillError}
+                                arrivalError = {arrivalError}
+                                departureError = {departureError}
+                                priceError = {priceError}
+                                fillErrorRef = {fillErrorRef}
+                                departureErrorRef={departureErrorRef}
+                                arrivalErrorRef={arrivalErrorRef}
+                                priceErrorRef={priceErrorRef}
+                            />
                         </div>
                     </div>
                 </div>

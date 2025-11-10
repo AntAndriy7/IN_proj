@@ -8,7 +8,10 @@ function EditPersonalAvia({ user }) {
     const [updatedName, setUpdatedName] = useState('');
     const [updatedPhone, setUpdatedPhone] = useState('');
     const [updatedEmail, setUpdatedEmail] = useState('');
-    const [error, setError] = useState(null);
+    const [fillError, setFillError] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const handleNameChange = (setter) => (e) => {
         let value = e.target.value
@@ -38,28 +41,30 @@ function EditPersonalAvia({ user }) {
     };
 
     const handleSave = () => {
+        setFillError('');
+        setEmailError('');
+        setPhoneError('');
+
         if (!updatedName || !updatedEmail || !updatedPhone) {
-            alert('All fields must be filled');
+            setFillError('All fields must be filled');
             return;
         }
 
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailPattern.test(updatedEmail)) {
-            alert('Please enter a valid email address.');
+            setEmailError('Please enter a valid email address.');
             return;
         }
 
         const phonePattern = /^\+?[0-9]{10,15}$/;
         if (!phonePattern.test(updatedPhone)) {
-            alert('Please enter a valid phone number (e.g., +1234567890).');
+            setPhoneError('Please enter a valid phone number (e.g., +1234567890).');
             return;
         }
 
         const token = localStorage.getItem('jwtToken');
-        const decoded = jwtDecode(token);
-        const userId = decoded.id;
 
-        fetch(`http://localhost:8080/api/user/${userId}`, {
+        fetch(`http://localhost:8080/api/user`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -71,45 +76,46 @@ function EditPersonalAvia({ user }) {
                 phoneNumber: updatedPhone
             }),
         })
-            .then(response => response.json())
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    const errorMessage = data?.message || 'Failed to update personal data';
+                    throw new Error(errorMessage);
+                }
+
+                return data;
+            })
             .then(data => {
-                if (data.token) {
-                    localStorage.setItem('jwtToken', data.token);
-                    window.location.reload();
-                }
-                else{
-                    console.error('Update failed:', data.error);
-                }
+                localStorage.setItem('jwtToken', data.token);
+                window.location.reload();
             })
             .catch(error => {
                 console.error('Error updating user:', error);
-                setError('Failed to update user');
+                setFillError(error.message || 'Failed to update user');
             });
     };
 
     const handleDelete = async () => {
-        const confirmed = window.confirm("Are you sure you want delete your account?");
-        if (confirmed) {
-            try {
-                const token = localStorage.getItem('jwtToken');
-                const decoded = jwtDecode(token);
-                const userId = decoded.id;
-                const response = await fetch(`http://localhost:8080/api/user/delete/${userId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                });
-                if (response.ok) {
-                    localStorage.removeItem('jwtToken');
-                    navigate('/login');
-                } else {
-                    alert("Failed to delete account.");
-                }
-            } catch (error) {
-                alert("There was an error deletion your account.");
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const decoded = jwtDecode(token);
+            const userId = decoded.id;
+            const response = await fetch(`http://localhost:8080/api/user/delete/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+            });
+            if (response.ok) {
+                localStorage.removeItem('jwtToken');
+                navigate('/login');
+            } else {
+                setFillError("Failed to delete account.");
             }
+        } catch (error) {
+            console.error('Error deleting account:', error);
         }
     };
 
@@ -124,7 +130,6 @@ function EditPersonalAvia({ user }) {
     return (
         <div className="flight-content">
             <div className="plane-card">
-                {error && <p className="error-message">{error}</p>}
                 <div className="personal-form">
                     <div className="personal-info-list">
                         <div className="info-section-personal">
@@ -147,6 +152,7 @@ function EditPersonalAvia({ user }) {
                                 value={updatedEmail}
                                 onChange={handleEmailChange}
                             />
+                            {emailError && <p className="error">{emailError}</p>}
                         </div>
                         <div className="info-section-personal">
                             <span className="label-pay">Phone number</span>
@@ -156,11 +162,38 @@ function EditPersonalAvia({ user }) {
                                 value={updatedPhone}
                                 onChange={handlePhoneChange}
                             />
+                            {phoneError && <p className="error">{phoneError}</p>}
                         </div>
                     </div>
                     <div className="personal-divider"></div>
+                    {fillError && <p className="error">{fillError}</p>}
                     <div className="personal-info-list">
-                        <button className="delete-button" onClick={handleDelete}>Delete account</button>
+                        {confirmDelete ? (
+                            <div>
+                                <div className="confirm-massage">Are you sure you want to delete account?</div>
+                                <div className="button-row">
+                                    <button
+                                        className="cancel-button"
+                                        onClick={() => handleDelete()}
+                                    >
+                                        Yes
+                                    </button>
+                                    <button
+                                        className="view-button"
+                                        onClick={() => setConfirmDelete(false)}
+                                    >
+                                        No
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                className="delete-button"
+                                onClick={() => setConfirmDelete(true)}
+                            >
+                                Delete account
+                            </button>
+                        )}
                         <button className="save-personal-button" onClick={handleSave}>Save</button>
                     </div>
                 </div>

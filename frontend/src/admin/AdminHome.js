@@ -29,14 +29,19 @@ function AdminHome({ onViewClick }) {
                     'Content-Type': 'application/json'
                 }
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => null);
 
-            if (!Array.isArray(data) || data.length < 4) {
+            if (!res.ok) {
+                const errorMessage = data?.message || 'Failed to fetch flights';
+                throw new Error(errorMessage);
+            }
+
+            if (!data?.flights || !data?.airlines || !data?.planes || !data?.airports) {
                 setError("Unexpected response format");
                 return;
             }
 
-            const [flightsArr, airlinesArr, planesArr, airportsArr] = data;
+            const { flights: flightsArr, airlines: airlinesArr, planes: planesArr, airports: airportsArr } = data;
 
             const airlineMap = Object.fromEntries(airlinesArr.map(a => [a.id, a.name]));
             const planeMap = Object.fromEntries(planesArr.map(p => [p.id, p]));
@@ -79,7 +84,7 @@ function AdminHome({ onViewClick }) {
 
         } catch (err) {
             console.error("Fetch error:", err);
-            setError("Failed to fetch flights");
+            setError(err.message || 'Failed to fetch flights');
         }
     };
 
@@ -148,6 +153,7 @@ function AdminHome({ onViewClick }) {
                 airports={airports}
                 flights={flights}
                 onFilterChange={handleFilterChange}
+                allowPastDates={true}
             />
 
             <div className="right-content">
@@ -227,7 +233,6 @@ function AdminHome({ onViewClick }) {
                                     <button className="order-home-button" onClick={() => onViewClick(flight, flight.airlineName)}>Edit</button>
                                 </div>
                             </div>
-
                         ))}
                     </div>
                 </div>

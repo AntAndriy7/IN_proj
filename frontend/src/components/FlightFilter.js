@@ -11,7 +11,8 @@ function FlightFilter({
                           onFilterChange = null,
                           disabled = false,
                           extraButtons = null,
-                          showDividerAfterButtons = false
+                          showDividerAfterButtons = false,
+                          allowPastDates = false
                       }) {
     const handlePriceInput = (value, maxLength = 5) => {
         return value.replace(/\D/g, '').slice(0, maxLength);
@@ -51,7 +52,7 @@ function FlightFilter({
     };
 
     return (
-        <div className="filter-sidebar">
+        <div className={`filter-sidebar ${disabled ? 'disabled' : ''}`}>
             <h2 className="filter-title">Filter</h2>
             <div className="filter-divider"></div>
 
@@ -99,6 +100,7 @@ function FlightFilter({
                         setFilter={setFilter}
                         onFilterChange={onFilterChange}
                         disabled={disabled}
+                        allowPastDates={allowPastDates}
                     />
                 </div>
 

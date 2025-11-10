@@ -103,9 +103,9 @@ function SignUpForm() {
             return;
         }
 
-        const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z]).{6,}$/;
+        const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
         if (!passwordPattern.test(password)) {
-            setPassError('Password must be at least 6 characters long, containing at least one uppercase and one lowercase letter.');
+            setPassError('Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.');
             return;
         }
 
@@ -125,26 +125,13 @@ function SignUpForm() {
                 body: JSON.stringify(userData)
             });
 
+            const data = await response.json().catch(() => null);
+
             if (!response.ok) {
-                const errorText = await response.text();
-                if (response.status === 409 || errorText.includes("exists")) {
-                    setEmailError("Account with this email already exists.");
-                } else {
-                    throw new Error(errorText || "Failed to create account");
-                }
-                return;
+                const errorMessage = data?.message || 'Failed to create user';
+                throw new Error(errorMessage);
             }
 
-            const userLoginData = { email: userData.email, password: userData.password };
-            const loginResponse = await fetch('http://localhost:8080/api/user/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userLoginData)
-            });
-
-            const data = await loginResponse.json();
             if (data.token) {
                 localStorage.setItem('jwtToken', data.token);
                 navigateBasedOnRole(data.token);
@@ -153,7 +140,13 @@ function SignUpForm() {
             }
 
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error :', error);
+            if (error.message.includes("email"))
+                setEmailError(error.message);
+            else if (error.message.includes("phone"))
+                setPhoneError(error.message);
+            else
+                setFillError(error.message || 'Failed to create account');
         }
     };
 
@@ -174,7 +167,27 @@ function SignUpForm() {
     return (
         <div className={styles.container}>
             <div className={styles.form}>
-                <div className={styles.logoContainer} title="Home" onClick={() => navigate('/main')}>
+                <div className={styles.logoContainer} title="Home" onClick={() => {
+                    const token = localStorage.getItem('jwtToken');
+                    if (token) {
+                        const decodedToken = jwtDecode(token);
+                        const { role } = decodedToken;
+
+                        if (role === 'ADMIN') {
+                            navigate('/admin/main');
+                        }
+                        else if (role === 'AVIA' || role === 'AVIA-temp') {
+                            navigate('/avia/main');
+                        }
+                        else {
+                            navigate('/main');
+                        }
+                    }
+                    else {
+                        navigate('/main');
+                    }
+                }}
+                >
                     <div className={styles.logo}>
                         <span>Kyiv</span>
                         <span>International</span>

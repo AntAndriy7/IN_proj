@@ -1,12 +1,12 @@
 import '../styles/Main.css';
 import { jwtDecode } from "jwt-decode";
 import logoImage from "../resources/plane-icon.png";
-import {useNavigate} from "react-router-dom";
+import {Navigate, useNavigate} from "react-router-dom";
 import Home from "./Home";
 import cabinetImage from "../resources/cabinet.png";
-import {useState} from "react";
+import React, {useState} from "react";
 import Order from "./Order";
-import Map from "../Map";
+import PlaneMap from "../PlaneMap";
 import Layout from "../components/Layout";
 
 function Main() {
@@ -17,8 +17,11 @@ function Main() {
     try {
         if (token) {
             const decodedToken = jwtDecode(token);
-            const { name } = decodedToken;
-            user = { name };
+
+            if (decodedToken.role !== "ADMIN" && decodedToken.role !== "AVIA" && decodedToken.role !== "AVIA-temp") {
+                const { name } = decodedToken;
+                user = { name };
+            }
         }
     } catch (error) {
         console.error("Invalid token", error);
@@ -34,15 +37,19 @@ function Main() {
             case 'order':
                 return <Order flight={selectedFlight}/>;
             case 'map':
-                return <Map />;
+                return <PlaneMap />;
             default:
                 return <Home onOrerClick={handleOrderClick} />;
         }
     };
 
     const handleOrderClick = (flight) => {
-        setSelectedFlight(flight);
-        setActivePage('order');
+        if (token) {
+            setSelectedFlight(flight);
+            setActivePage('order');
+        } else {
+            navigate('/login');
+        }
     };
 
     return (
@@ -80,7 +87,29 @@ function Main() {
                             <img src={cabinetImage} alt="logo" className="cabinetImage"/>
                         </button>
                     ) : (
-                        <button className="login-button" onClick={() => navigate('/login')}>Login</button>
+                        <button className="login-button" onClick={() => {
+                            if (token) {
+                                const decodedToken = jwtDecode(token);
+
+                                switch (decodedToken.role) {
+                                    case "ADMIN":
+                                        navigate('/admin/main');
+                                        break;
+                                    case "AVIA":
+                                    case "AVIA-temp":
+                                        navigate('/avia/main');
+                                        break;
+                                    default:
+                                        navigate('/login');
+                                        break;
+                                }
+                            } else {
+                                navigate('/login');
+                            }
+                        }}
+                        >
+                            Login
+                        </button>
                     )}
                 </div>
             </header>

@@ -25,9 +25,7 @@ function AviaHome({ onViewClick, onAddClick}) {
 
     const fetchFlights = async () => {
         try {
-            const aviaId = decoded.id;
-
-            const res = await fetch(`http://localhost:8080/api/flight/avia/${aviaId}`, {
+            const res = await fetch(`http://localhost:8080/api/flight/avia`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -35,14 +33,19 @@ function AviaHome({ onViewClick, onAddClick}) {
                 }
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => null);
 
-            if (!Array.isArray(data) || data.length < 3) {
+            if (!res.ok) {
+                const errorMessage = data?.message || 'Failed to fetch flights';
+                throw new Error(errorMessage);
+            }
+
+            if (!data?.flights || !data?.planes || !data?.airports) {
                 setError("Unexpected response format");
                 return;
             }
 
-            const [flightsArr, planesArr, airportsArr] = data;
+            const { flights: flightsArr, planes: planesArr, airports: airportsArr } = data;
 
             const planeMap = Object.fromEntries(planesArr.map(p => [p.id, p]));
             const airportMap = Object.fromEntries(airportsArr.map(a => [a.id, a]));
@@ -83,7 +86,7 @@ function AviaHome({ onViewClick, onAddClick}) {
 
         } catch (err) {
             console.error("Fetch error:", err);
-            setError("Failed to fetch flights");
+            setError(err.message || 'Failed to fetch flights');
         }
     };
 
@@ -158,6 +161,7 @@ function AviaHome({ onViewClick, onAddClick}) {
                     </button>
                 }
                 showDividerAfterButtons={true}
+                allowPastDates={true}
             />
 
             <div className="right-content">

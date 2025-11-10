@@ -12,8 +12,11 @@ import Layout from "../components/Layout";
 function AviaCabinet() {
     const navigate = useNavigate();
     const token = localStorage.getItem('jwtToken');
-    const decoded = jwtDecode(token);
-    const aviaRole = decoded.role;
+    let aviaRole = '';
+    if (token) {
+        const decoded = jwtDecode(token);
+        aviaRole = decoded.role;
+    }
     const [activePage, setActivePage] = useState(aviaRole === 'AVIA' ? 'clients' : 'editPersonalAvia');
     const [user, setUser] = useState(null);
     const [error, setError] = useState(null);
@@ -34,22 +37,29 @@ function AviaCabinet() {
     };
 
     const fetchUser = () => {
-        const userId = decoded.id;
-
-        fetch(`http://localhost:8080/api/user/${userId}`, {
+        fetch(`http://localhost:8080/api/user`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
         })
-            .then(response => response.json())
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    const errorMessage = data?.message || 'Failed to fetch user';
+                    throw new Error(errorMessage);
+                }
+
+                return data;
+            })
             .then(data => {
                 setUser({ name: data.name, email: data.email, phoneNumber: data.phoneNumber });
             })
             .catch(error => {
-                console.error('Error fetching user data:', error);
-                setError('Failed to fetch user data');
+                console.error('Error fetching user:', error);
+                setError(error.message || 'Failed to fetch user');
             });
     };
 

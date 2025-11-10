@@ -3,12 +3,13 @@ import { jwtDecode } from "jwt-decode";
 import logoImage from "../resources/plane-icon.png";
 import {useNavigate} from "react-router-dom";
 import cabinetImage from "../resources/cabinet.png";
-import {useState} from "react";
+import React, {useState} from "react";
 import AviaHome from "./AviaHome";
 import Flight from "./Flight";
-import Map from "../Map";
+import PlaneMap from "../PlaneMap";
 import Add from "./Add";
 import Layout from "../components/Layout";
+import FlightFilter from "../components/FlightFilter";
 
 function AviaMain() {
     const navigate = useNavigate();
@@ -21,11 +22,54 @@ function AviaMain() {
     const [selectedFlight, setSelectedFlight] = useState(null);
     const [selectedAirline, setSelectedAirline] = useState(null);
 
-    const renderTemporaryContent = () => (
-        <div className="temporary-message">
-            <h2>Your account is not verified. Please contact the administration to get full access.</h2>
-        </div>
-    );
+    const [filter, setFilter] = useState({
+        from: "",
+        to: "",
+        dateFrom: "",
+        dateTo: "",
+        priceMin: "",
+        priceMax: ""
+    });
+    const airports = [
+        { country: "", city: "", code: "", name: "" }
+    ];
+
+    const renderTemporaryContent = () => {
+        switch (activePage) {
+            case 'home':
+                return <div className="home-layout">
+                    <FlightFilter
+                        filter={filter}
+                        setFilter={setFilter}
+                        airports={airports}
+                        disabled={true}
+                    />
+
+                    <div className="right-content">
+                        <div className="flight-content">
+                            <h2>Your account is not verified. Please contact the administration to get full access.</h2>
+                        </div>
+                    </div>
+                </div>;
+            case 'map':
+                return <PlaneMap/>;
+            default:
+                return <div className="home-layout">
+                    <FlightFilter
+                        filter={filter}
+                        setFilter={setFilter}
+                        airports={airports}
+                        disabled={true}
+                    />
+
+                    <div className="right-content">
+                        <div className="flight-content">
+                            <h2>Your account is not verified. Please contact the administration to get full access.</h2>
+                        </div>
+                    </div>
+                </div>;
+        }
+    };
 
     const renderContent = () => {
         switch (activePage) {
@@ -34,7 +78,7 @@ function AviaMain() {
             case 'flight':
                 return <Flight flight={selectedFlight} airLine={selectedAirline} onAddClick={handleAddClick}/>;
             case 'map':
-                return <Map/>;
+                return <PlaneMap/>;
             case 'add':
                 return <Add/>
             default:

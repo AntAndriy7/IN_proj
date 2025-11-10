@@ -7,6 +7,7 @@ function InactiveAccounts() {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
     const [visibleCards, setVisibleCards] = useState([]);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
     const [filter, setFilter] = useState({
         from: "",
@@ -30,17 +31,16 @@ function InactiveAccounts() {
                 'Content-Type': 'application/json',
             },
         })
-            .then(response => {
-                if (response.status === 404) {
-                    setError("No inactive accounts.");
-                    setUsers([]);
-                    return null;
-                }
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch users');
+                    const errorMessage = data?.message || 'Failed to fetch users';
+                    setUsers([]);
+                    throw new Error(errorMessage);
                 }
-                return response.json();
+
+                return data;
             })
             .then(data => {
                 if (!data) return;
@@ -50,33 +50,32 @@ function InactiveAccounts() {
             })
             .catch(err => {
                 console.error('Error fetching users:', err);
-                setError('Failed to fetch users');
+                setError(err.message || 'Failed to fetch users');
             });
     };
 
     const handleDelete = async (userId) => {
-        const confirmed = window.confirm("Are you sure you want to delete this account?");
-        if (confirmed) {
-            try {
-                const token = localStorage.getItem('jwtToken');
-                const response = await fetch(`http://localhost:8080/api/user/delete/${userId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const response = await fetch(`http://localhost:8080/api/user/delete/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
 
-                if (response.ok) {
-                    alert("Account successfully deleted");
-                    setUsers(users.filter(user => user.id !== userId));
-                } else {
-                    alert("Failed to delete account");
-                }
-            } catch (err) {
-                console.error('Error deleting user:', err);
-                alert("There was an error deleting the account.");
+            if (response.ok) {
+                setUsers(users.filter(user => user.id !== userId));
+            } else {
+                setError("Failed to delete account.");
             }
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            setError("There was an error deleting the account.");
+        }
+        finally {
+            setConfirmDeleteId(null);
         }
     };
 
@@ -127,12 +126,32 @@ function InactiveAccounts() {
                                     </div>
                                 </div>
                                 <div className="flight-right">
-                                    <button
-                                        className="delete-button"
-                                        onClick={() => handleDelete(user.id)}
-                                    >
-                                        Delete
-                                    </button>
+                                    {confirmDeleteId === user.id ? (
+                                        <>
+                                            <div>Are you sure you want to delete this account?</div>
+                                            <div className="button-row">
+                                                <button
+                                                    className="cancel-button"
+                                                    onClick={() => handleDelete(user.id)}
+                                                >
+                                                    Yes
+                                                </button>
+                                                <button
+                                                    className="view-button"
+                                                    onClick={() => setConfirmDeleteId(null)}
+                                                >
+                                                    No
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <button
+                                            className="delete-button"
+                                            onClick={() => setConfirmDeleteId(user.id)}
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}

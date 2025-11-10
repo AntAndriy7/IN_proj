@@ -160,6 +160,7 @@
 }
 
 .react-datepicker-wrapper {
+    width: 100% !important;
     cursor: pointer !important;
 }
 
@@ -190,10 +191,10 @@
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: #ccc; /* сіра */
+    color: #ccc;
     font-size: 18px;
     opacity: 0.8;
-    pointer-events: none; /* не блокує клік */
+    pointer-events: none;
     transition: color 0.2s ease, opacity 0.2s ease;
 }
 
@@ -201,4 +202,19 @@
 .date-input-wrapper:focus-within .calendar-icon {
     color: #ffdd2d;
     opacity: 0.8;
+}
+
+.date-input-wrapper:has(input:disabled) .calendar-icon {
+    color: #bbb;
+    opacity: 0.3;
+}
+
+.react-datepicker__triangle,
+.react-datepicker__triangle::before,
+.react-datepicker__triangle::after {
+    display: none !important;
+}
+
+.react-datepicker-popper .react-datepicker__triangle {
+    display: none !important;
 }

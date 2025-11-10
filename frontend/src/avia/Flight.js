@@ -1,7 +1,7 @@
-import React, {useEffect, useState} from 'react';
-import {jwtDecode} from "jwt-decode";
+import React, {useEffect, useRef, useState} from 'react';
 import FlightFilter from "../components/FlightFilter";
 import '../styles/Home.css'
+import DateTime from "../components/DateTime";
 
 function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
     const [flight, setFlight] = useState(initialFlight);
@@ -12,6 +12,7 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
     const [updatedPrice, setUpdatedPrice] = useState('');
     const [users, setUsers] = useState([]);
     const [bonusValues, setBonusValues] = useState({});
+    const [confirmCancel, setConfirmCancel] = useState(false);
 
     const [filter, setFilter] = useState({
         from: "",
@@ -31,16 +32,47 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
 
     const [isEditing, setIsEditing] = useState(false);
 
+    const [fillError, setFillError] = useState('');
+    const [departureError, setDepartureError] = useState('');
+    const [arrivalError, setArrivalError] = useState('');
+    const [priceError, setPriceError] = useState('');
+    const [bonusErrors, setBonusErrors] = useState({});
+
+    const fillErrorRef = useRef(null);
+    const departureErrorRef = useRef(null);
+    const arrivalErrorRef = useRef(null);
+    const priceErrorRef = useRef(null);
+    const [errorTrigger, setErrorTrigger] = useState(0);
+
+    useEffect(() => {
+        if (fillError && fillErrorRef.current) {
+            fillErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (departureError && departureErrorRef.current) {
+            departureErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (arrivalError && arrivalErrorRef.current) {
+            arrivalErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (priceError && priceErrorRef.current) {
+            priceErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [fillError, departureError, arrivalError, priceError, errorTrigger]);
+
     const handleEdit = () => {
+        setFillError('');
+        setDepartureError('');
+        setArrivalError('');
+        setPriceError('');
+        setErrorTrigger(0);
+
         setUpdatedPrice(flight.ticket_price);
         setUpdatedDepartureDate(flight.departure_date);
-        setUpdatedDepartureTime(flight.departure_time);
+        setUpdatedDepartureTime(flight.departure_time.slice(0, 5));
         setUpdatedArrivalDate(flight.arrival_date);
-        setUpdatedArrivalTime(flight.arrival_time);
+        setUpdatedArrivalTime(flight.arrival_time.slice(0, 5));
         setIsEditing(true);
     };
 
     const handleShowClients = () => {
+        setBonusErrors({});
         setIsEditing(false);
     };
 
@@ -98,9 +130,15 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
     };
 
     const handleSave = () => {
+        setFillError('');
+        setDepartureError('');
+        setArrivalError('');
+        setPriceError('');
+
         if (!updatedDepartureDate || !updatedDepartureTime || !updatedArrivalDate || !updatedArrivalTime || !updatedPrice) {
-            alert('All fields must be filled');
             handleEdit();
+            setFillError('All fields must be filled');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
@@ -110,13 +148,22 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
 
         if (departureDateTime < flightDepartureDateTime) {
             handleEdit();
-            alert('Updated departure date and time must be later than the current departure date and time');
+            setDepartureError('Updated departure date and time must be later than the current departure date and time');
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
         if (departureDateTime >= arrivalDateTime) {
             handleEdit();
-            alert('Departure date and time must be earlier than arrival date and time');
+            setArrivalError('Departure date and time must be earlier than arrival date and time');
+            setErrorTrigger(prev => prev + 1);
+            return;
+        }
+
+        const minPrice = 50;
+        if (Number(updatedPrice) < minPrice) {
+            setPriceError(`Ticket price must be at least ${minPrice} UAH.`);
+            setErrorTrigger(prev => prev + 1);
             return;
         }
 
@@ -135,7 +182,7 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                 ticket_price: updatedPrice
             }),
         })
-            .then(response => {
+            .then(async (response) => {
                 if (response.ok) {
                     setFlight(prev => ({
                         ...prev,
@@ -146,36 +193,40 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                         ticket_price: updatedPrice
                     }));
                 } else {
-                    throw new Error('Failed to update flight');
+                    const data = await response.json().catch(() => null);
+                    const errorMessage = data?.message || 'Failed to update flight';
+                    throw new Error(errorMessage);
                 }
             })
             .catch(error => {
                 console.error('Error updating flight:', error);
+                setFillError(error.message || 'Failed to update flight');
             });
 
         setIsEditing(false);
     };
 
     const handleCancel = () => {
-        const confirmed = window.confirm("Are you sure you want to cancel this flight?");
-        if (confirmed) {
-            const token = localStorage.getItem('jwtToken');
-            fetch(`http://localhost:8080/api/flight/status/${flight.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
+        const token = localStorage.getItem('jwtToken');
+        fetch(`http://localhost:8080/api/flight/status/${flight.id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    const data = await response.json().catch(() => null);
+                    const errorMessage = data?.message || 'Failed to cancel flight';
+                    throw new Error(errorMessage);
                 }
+                setFlight(prev => ({ ...prev, status: false }));
+                fetchUsers();
             })
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to cancel flight');
-                    setFlight(prev => ({ ...prev, status: false }));
-                    fetchUsers();
-                })
-                .catch(error => {
-                    console.error('Error canceling flight:', error);
-                });
-        }
+            .catch(error => {
+                console.error(error.message || 'Failed to cancel flight');
+            });
     };
 
     const fetchUsers = () => {
@@ -188,30 +239,40 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                 'Content-Type': 'application/json',
             },
         })
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to fetch users');
-                return response.json();
+            .then(async (response) => {
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    const errorMessage = data?.message || 'Failed to fetch users';
+                    throw new Error(errorMessage);
+                }
+
+                return data;
             })
             .then(data => setUsers(data))
-            .catch(err => console.error('Error fetching users:', err));
+            .catch(err => { console.error(err.message || 'Failed to fetch users'); });
     };
 
     const handleSend = async (userId) => {
+        setBonusErrors({});
+
         const inputValue = bonusValues[userId];
+        const newErrors = {};
+
         if (!inputValue || inputValue.trim() === "") {
-            alert("Please enter a bonus value.");
+            newErrors[userId] = "Please enter a bonus value.";
+            setBonusErrors(newErrors);
             return;
         }
 
         const amount = parseInt(inputValue, 10);
         if (isNaN(amount) || amount <= 0) {
-            alert("Please enter a valid whole number greater than zero.");
+            newErrors[userId] = "Please enter a valid whole number greater than zero.";
+            setBonusErrors(newErrors);
             return;
         }
 
         const token = localStorage.getItem("jwtToken");
-        const decoded = jwtDecode(token);
-        const aviaId = decoded.id;
 
         try {
             const response = await fetch("http://localhost:8080/api/bonus", {
@@ -221,28 +282,31 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    avia_id: aviaId,
                     client_id: userId,
                     bonus_count: amount,
                 }),
             });
 
-            if (!response.ok) throw new Error("Failed to update or create bonus");
+            const data = await response.json().catch(() => null);
 
-            const updated = await response.json();
+            if (!response.ok) {
+                const errorMessage = data?.message || 'Failed to send bonuses';
+                throw new Error(errorMessage);
+            }
+
             setUsers(prevUsers =>
                 prevUsers.map(item =>
                     item.user.id === userId
-                        ? { ...item, bonus_count: updated.bonus_count }
+                        ? { ...item, bonus_count: data.bonus_count }
                         : item
                 )
             );
 
             setBonusValues(prev => ({ ...prev, [userId]: "" }));
-            alert("Bonuses updated successfully!");
         } catch (error) {
             console.error("Error updating bonuses:", error);
-            alert("Something went wrong while updating bonuses.");
+            newErrors[userId] = error.message || `Something went wrong while updating bonuses.`;
+            setBonusErrors(newErrors);
         }
     };
 
@@ -327,25 +391,47 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                                 </div>
 
                                 <div className="myFlight-right">
-                                    <div className="price">{flight.ticket_price} UAH</div>
-                                    <div className="order-status">
-                                        {flight.status ? "Active" : "Inactive"}
-                                    </div>
-                                    <div className="button-row">
-                                        {flight.status && (
-                                            <button className="view-button" onClick={handleEdit}>
-                                                Edit
-                                            </button>
-                                        )}
-                                        <button className="pay-button" onClick={handleShowClients}>
-                                            Clients
-                                        </button>
-                                        {flight.status && (
-                                            <button className="cancel-button" onClick={handleCancel}>
-                                                Cancel
-                                            </button>
-                                        )}
-                                    </div>
+                                    {confirmCancel ? (
+                                        <>
+                                            <div className="confirm-massage">Are you sure you want to cancel this flight?</div>
+                                            <div className="button-row">
+                                                <button
+                                                    className="cancel-button"
+                                                    onClick={handleCancel}
+                                                >
+                                                    Yes
+                                                </button>
+                                                <button
+                                                    className="view-button"
+                                                    onClick={() => setConfirmCancel(false)}
+                                                >
+                                                    No
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="price">{flight.ticket_price} UAH</div>
+                                            <div className="order-status">
+                                                {flight.status ? "Active" : "Inactive"}
+                                            </div>
+                                            <div className="button-row">
+                                                {flight.status && (
+                                                    <button className="view-button" onClick={handleEdit}>
+                                                        Edit
+                                                    </button>
+                                                )}
+                                                <button className="pay-button" onClick={handleShowClients}>
+                                                    Clients
+                                                </button>
+                                                {flight.status && (
+                                                    <button className="cancel-button" onClick={() => setConfirmCancel(true)}>
+                                                        Cancel
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -353,94 +439,25 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                         <div className="order-container">
                             {isEditing ? (
                                 <div className="flight-edit-form">
-                                    <div className="first-edit-section">
-                                        <h4 className="edit-section-title">Departure Schedule</h4>
-                                        <div className="edit-datetime-grid">
-                                            <div className="edit-field">
-                                                <label>Departure Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={updatedDepartureDate}
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                    max={new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-                                                        .toISOString()
-                                                        .split('T')[0]}
-                                                    onChange={(e) => handleDateChange("departure_date", e.target.value)}
-                                                    onKeyDown={(e) => e.preventDefault()}
-                                                />
-                                            </div>
-                                            <div className="edit-field">
-                                                <label>Departure Time</label>
-                                                <input
-                                                    type="time"
-                                                    value={updatedDepartureTime}
-                                                    onChange={(e) => handleDateChange("departure_time", e.target.value)}
-                                                    onKeyDown={(e) => e.preventDefault()}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="edit-section">
-                                        <h4 className="edit-section-title">Arrival Schedule</h4>
-                                        <div className="edit-datetime-grid">
-                                            <div className="edit-field">
-                                                <label>Arrival Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={updatedArrivalDate}
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                    max={new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-                                                        .toISOString()
-                                                        .split('T')[0]}
-                                                    onChange={(e) => handleDateChange("arrival_date", e.target.value)}
-                                                    onKeyDown={(e) => e.preventDefault()}
-                                                />
-                                            </div>
-                                            <div className="edit-field">
-                                                <label>Arrival Time</label>
-                                                <input
-                                                    type="time"
-                                                    value={updatedArrivalTime}
-                                                    onChange={(e) => handleDateChange("arrival_time", e.target.value)}
-                                                    onKeyDown={(e) => e.preventDefault()}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="edit-section">
-                                        <h4 className="edit-section-title">Pricing</h4>
-                                        <div className="edit-field">
-                                            <label>Ticket Price (UAH)</label>
-                                            <input
-                                                type="number"
-                                                value={updatedPrice}
-                                                placeholder="0"
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    if (/^\d{0,5}$/.test(value)) {
-                                                        setUpdatedPrice(value);
-                                                    }
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (!/[0-9]/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                                onPaste={(e) => {
-                                                    const paste = e.clipboardData.getData('text');
-                                                    if (/\D/.test(paste)) e.preventDefault();
-                                                }}
-                                                className="no-spinner"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="edit-actions">
-                                        <button className="btn-clear" onClick={handleEdit}>Clear</button>
-                                        <button className="btn-primary" onClick={handleSave}>Save</button>
-                                    </div>
+                                    <DateTime
+                                        updatedDepartureDate={updatedDepartureDate}
+                                        updatedDepartureTime={updatedDepartureTime}
+                                        updatedArrivalDate={updatedArrivalDate}
+                                        updatedArrivalTime={updatedArrivalTime}
+                                        updatedPrice={updatedPrice}
+                                        setUpdatedPrice={setUpdatedPrice}
+                                        handleDateChange={handleDateChange}
+                                        handleEdit={handleEdit}
+                                        handleSave={handleSave}
+                                        fillError = {fillError}
+                                        arrivalError = {arrivalError}
+                                        departureError = {departureError}
+                                        priceError = {priceError}
+                                        fillErrorRef = {fillErrorRef}
+                                        departureErrorRef={departureErrorRef}
+                                        arrivalErrorRef={arrivalErrorRef}
+                                        priceErrorRef={priceErrorRef}
+                                    />
                                 </div>
                             ) : users.length === 0 ? (
                                 <div className="error-message-nomar">
@@ -465,25 +482,31 @@ function Flight({flight: initialFlight, airLine: initialAirline, onAddClick}) {
                                             <span className="label">Bonuses</span>
                                             <span className="value">{item.bonus_count}</span>
                                         </div>
-                                        <div className="bonus-control">
-                                            <input
-                                                type="number"
-                                                className="add-bonus-input no-spinner"
-                                                placeholder="Bonus amount"
-                                                value={bonusValues[item.user.id] || ""}
-                                                onChange={(e) =>
-                                                    setBonusValues({
-                                                        ...bonusValues,
-                                                        [item.user.id]: e.target.value,
-                                                    })
-                                                }
-                                            />
-                                            <button
-                                                className="order-home-button"
-                                                onClick={() => handleSend(item.user.id)}
-                                            >
-                                                Send
-                                            </button>
+                                        <div className="info-section">
+                                            <div className="bonus-control">
+                                                <input
+                                                    type="number"
+                                                    className="add-bonus-input no-spinner"
+                                                    placeholder="0"
+                                                    value={bonusValues[item.user.id] || ""}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        if (/^\d{0,5}$/.test(value)) {
+                                                            setBonusValues({
+                                                                ...bonusValues,
+                                                                [item.user.id]: value,
+                                                            });
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    className="order-home-button"
+                                                    onClick={() => handleSend(item.user.id)}
+                                                >
+                                                    Send
+                                                </button>
+                                            </div>
+                                            {bonusErrors[item.user.id] && <p className="bonus-error">{bonusErrors[item.user.id]}</p>}
                                         </div>
                                     </div>
                                 ))

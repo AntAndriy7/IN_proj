@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/Home.css';
-import { jwtDecode } from 'jwt-decode';
 import Pagination from "../components/Pagination";
 
 function MyFlights() {
@@ -11,6 +10,13 @@ function MyFlights() {
     const [viewOrderId, setViewOrderId] = useState(null);
     const [visibleCards, setVisibleCards] = useState([]);
 
+    const [numberError, setNumberError] = useState('');
+    const [nameError, setNameError] = useState('');
+    const [dateError, setDateError] = useState('');
+    const [cvvError, setCvvError] = useState('');
+
+    const [confirmCancelId, setConfirmCancelId] = useState(null);
+
     const [formValues, setFormValues] = useState({
         cardNumber: '',
         cardholderName: '',
@@ -18,18 +24,15 @@ function MyFlights() {
         cvv: '',
     });
 
-    const token = localStorage.getItem('jwtToken');
-    const decodedToken = jwtDecode(token);
-    const { id } = decodedToken;
-
     useEffect(() => {
-        fetchOrdersByClientId(id);
-    }, [id]);
+        fetchOrdersByClientId();
+    }, []);
 
-    const fetchOrdersByClientId = async (id) => {
+    const fetchOrdersByClientId = async () => {
         try {
             const token = localStorage.getItem('jwtToken');
-            const res = await fetch(`http://localhost:8080/api/order/client/${id}`, {
+
+            const res = await fetch(`http://localhost:8080/api/order/client`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -37,26 +40,27 @@ function MyFlights() {
                 }
             });
 
-            if (res.status === 404) {
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok) {
+                const errorMessage = data?.message || 'Failed to fetch orders';
                 setOrders([]);
                 setTickets({});
-                setError("You have no orders yet.");
-                return;
+                throw new Error(errorMessage);
             }
 
-            const data = await res.json();
-
-            if (!Array.isArray(data) || data.length < 6) {
+            if (!data.flightsData || !Array.isArray(data.orders) || !Array.isArray(data.tickets)) {
                 setError("Unexpected response format");
                 return;
             }
 
-            const [flightsArr, airlinesArr, planesArr, airportsArr, ordersArr, ticketsArr] = data;
+            const { flightsData, orders: ordersArr, tickets: ticketsArr } = data;
+            const { flights, airlines, planes, airports } = flightsData;
 
-            const airlineMap = Object.fromEntries(airlinesArr.map(a => [a.id, a.name]));
-            const planeMap = Object.fromEntries(planesArr.map(p => [p.id, p]));
-            const airportMap = Object.fromEntries(airportsArr.map(a => [a.id, a]));
-            const flightMap = Object.fromEntries(flightsArr.map(f => [f.id, f]));
+            const airlineMap = Object.fromEntries(airlines.map(a => [a.id, a.name]));
+            const planeMap = Object.fromEntries(planes.map(p => [p.id, p]));
+            const airportMap = Object.fromEntries(airports.map(a => [a.id, a]));
+            const flightMap = Object.fromEntries(flights.map(f => [f.id, f]));
 
             const processedOrders = ordersArr.map(o => {
                 const flight = flightMap[o.flight_id]
@@ -104,17 +108,49 @@ function MyFlights() {
             }
             setTickets(ticketsMap);
 
-            setError(null);
+            setError('');
         } catch (err) {
             console.error("Fetch error:", err);
-            setError('Failed to fetch orders');
+            setError(err.message || 'Failed to fetch orders');
+        }
+    };
+
+    const handleDownloadTicket = async (orderId) => {
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const response = await fetch(`http://localhost:8080/api/download/${orderId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                console.error(`Failed to download ticket: ${response.status}`);
+                return;
+            }
+
+            const contentType = response.headers.get("Content-Type");
+            if (contentType !== "application/pdf") {
+                console.error("Unexpected response type:", contentType);
+                return;
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `KIA_order_${orderId}.pdf`;
+            link.click();
+
+            setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+        } catch (err) {
+            console.error("Error while downloading ticket:", err);
         }
     };
 
     const handleCancel = async (orderId) => {
-        const confirmed = window.confirm('Cancel this order?');
-        if (!confirmed) return;
-
         const token = localStorage.getItem('jwtToken');
         const response = await fetch(`http://localhost:8080/api/order/${orderId}`, {
             method: 'PUT',
@@ -124,7 +160,13 @@ function MyFlights() {
 
         if (response.ok) {
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: 'canceled' } : o));
-        } else alert('Failed to cancel order');
+        } else {
+            const data = await response.json().catch(() => null);
+            const errorMessage = data?.message || 'Failed to cancel order';
+            console.error(errorMessage);
+        }
+
+        setConfirmCancelId(null);
     };
 
     const handlePaymentInputChange = (e) => {
@@ -182,27 +224,32 @@ function MyFlights() {
     };
 
     const handleConfirmPayment = async (orderId) => {
+        setNumberError('');
+        setNameError('');
+        setDateError('');
+        setCvvError('');
+
         const { cardNumber, cardholderName, expirationDate, cvv } = formValues;
 
         if (!cardNumber || !cardholderName || !expirationDate || !cvv) {
-            alert('Please fill in all payment fields.');
+            setNumberError('Please fill in all payment fields.');
             return;
         }
 
         const cleanCardNumber = cardNumber.replace(/\s/g, '');
         if (cleanCardNumber.length !== 16) {
-            alert('Card number must contain 16 digits.');
+            setNumberError('Card number must contain 16 digits.');
             return;
         }
 
-        if (cvv.length !== 3) {
-            alert('CVV must contain 3 digits.');
+        if (!/^[A-Z]+ [A-Z]+(?: [A-Z]+)*$/.test(cardholderName.trim())) {
+            setNameError('Cardholder name must contain first and last name separated by a space.');
             return;
         }
 
         const [monthStr, yearStr] = expirationDate.split('/');
         if (!monthStr || !yearStr || monthStr.length !== 2 || yearStr.length !== 2) {
-            alert('Expiration date must be in format MM/YY.');
+            setDateError('Expiration date must be in format MM/YY.');
             return;
         }
 
@@ -210,7 +257,7 @@ function MyFlights() {
         const year = 2000 + parseInt(yearStr, 10);
 
         if (isNaN(month) || isNaN(year) || month < 1 || month > 12) {
-            alert('Invalid expiration month.');
+            setDateError('Invalid expiration month.');
             return;
         }
 
@@ -219,12 +266,12 @@ function MyFlights() {
         expDate.setMonth(expDate.getMonth() + 1);
 
         if (expDate < now) {
-            alert('Card expiration date cannot be earlier than today.');
+            setDateError('Card expiration date cannot be earlier than today.');
             return;
         }
 
-        if (!/^[A-Z]+ [A-Z]+(?: [A-Z]+)*$/.test(cardholderName.trim())) {
-            alert('Cardholder name must contain first and last name separated by a space.');
+        if (cvv.length !== 3) {
+            setCvvError('CVV must contain 3 digits.');
             return;
         }
 
@@ -237,8 +284,11 @@ function MyFlights() {
 
         if (response.ok) {
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: 'paid' } : o));
-            alert('Payment successful!');
-        } else alert('Failed to pay order');
+        } else {
+            const data = await response.json().catch(() => null);
+            const errorMessage = data?.message || 'Failed to cancel order';
+            setNumberError(errorMessage);
+        }
 
         setPayOrderId(null);
     };
@@ -326,45 +376,85 @@ function MyFlights() {
                                     </div>
 
                                     <div className="myFlight-right">
-                                        <div className="price">{order.total_price} UAH</div>
-                                        <div className="order-status">
-                                            {capitalizeFirstLetter(order.payment_status)}
-                                        </div>
-                                        <div className="button-row">
-                                            <button
-                                                className="view-button"
-                                                onClick={() => {
-                                                    setPayOrderId(null);
-                                                    setViewOrderId(viewOrderId === order.id ? null : order.id);
-                                                }}
-                                            >
-                                                View
-                                            </button>
-                                            {order.payment_status === 'booked' && (
-                                                <button
-                                                    className="pay-button"
-                                                    onClick={() => {
-                                                        setPayOrderId(
-                                                            payOrderId === order.id ? null : order.id
-                                                        );
-                                                        setViewOrderId(null);
-                                                    }}
-                                                >
-                                                    Pay
-                                                </button>
-                                            )}
-                                            {(order.payment_status === 'booked' ||
-                                                order.payment_status === 'paid') && (
-                                                <button
-                                                    className="cancel-button"
-                                                    onClick={() =>
-                                                        handleCancel(order.id)
-                                                    }
-                                                >
-                                                    Cancel
-                                                </button>
-                                            )}
-                                        </div>
+                                        {confirmCancelId === order.id ? (
+                                            <>
+                                                <div className="confirm-massage">Are you sure you want to cancel this order?</div>
+                                                <div className="button-row">
+                                                    <button
+                                                        className="cancel-button"
+                                                        onClick={() => handleCancel(order.id)}
+                                                    >
+                                                        Yes
+                                                    </button>
+                                                    <button
+                                                        className="view-button"
+                                                        onClick={() => setConfirmCancelId(null)}
+                                                    >
+                                                        No
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="price">{order.total_price} UAH</div>
+                                                <div className="order-status">
+                                                    {capitalizeFirstLetter(order.payment_status)}
+                                                </div>
+                                                <div className="button-row">
+                                                    <button
+                                                        className="view-button"
+                                                        onClick={() => {
+                                                            setNumberError('');
+                                                            setNameError('');
+                                                            setDateError('');
+                                                            setCvvError('');
+
+                                                            setPayOrderId(null);
+                                                            setViewOrderId(viewOrderId === order.id ? null : order.id);
+                                                        }}
+                                                    >
+                                                        View
+                                                    </button>
+                                                    {order.payment_status === 'booked' && (
+                                                        <button
+                                                            className="pay-button"
+                                                            onClick={() => {
+                                                                setNumberError('');
+                                                                setNameError('');
+                                                                setDateError('');
+                                                                setCvvError('');
+
+                                                                setPayOrderId(
+                                                                    payOrderId === order.id ? null : order.id
+                                                                );
+                                                                setViewOrderId(null);
+                                                            }}
+                                                        >
+                                                            Pay
+                                                        </button>
+                                                    )}
+                                                    {order.payment_status === 'paid' && order.status === true && (
+                                                        <button
+                                                            className="pay-button"
+                                                            onClick={() => handleDownloadTicket(order.id)}
+                                                        >
+                                                            Download
+                                                        </button>
+                                                    )}
+                                                    {(order.payment_status === 'booked' ||
+                                                        order.payment_status === 'paid') && (
+                                                        <button
+                                                            className="cancel-button"
+                                                            onClick={() =>
+                                                                setConfirmCancelId(order.id)
+                                                            }
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
@@ -379,8 +469,9 @@ function MyFlights() {
                                                     placeholder="**** **** **** ****"
                                                     value={formValues.cardNumber}
                                                     onChange={handlePaymentInputChange}
-                                                    className="form-input-city"
+                                                    className="form-input-card"
                                                 />
+                                                {numberError && <p className="bonus-error">{numberError}</p>}
                                             </div>
                                             <div className="info-section">
                                                 <span className="label-pay">Cardholder Name</span>
@@ -390,8 +481,9 @@ function MyFlights() {
                                                     placeholder="NAME SURNAME"
                                                     value={formValues.cardholderName}
                                                     onChange={handlePaymentInputChange}
-                                                    className="form-input-city"
+                                                    className="form-input-card"
                                                 />
+                                                {nameError && <p className="bonus-error">{nameError}</p>}
                                             </div>
                                             <div className="info-section">
                                                 <span className="label-pay">Expiration Date</span>
@@ -402,8 +494,9 @@ function MyFlights() {
                                                     value={formValues.expirationDate}
                                                     onChange={handlePaymentInputChange}
 
-                                                    className="form-input-city"
+                                                    className="form-input-card"
                                                 />
+                                                {dateError && <p className="bonus-error">{dateError}</p>}
                                             </div>
                                             <div className="info-section">
                                                 <span className="label-pay">CVV</span>
@@ -413,8 +506,9 @@ function MyFlights() {
                                                     placeholder="***"
                                                     value={formValues.cvv}
                                                     onChange={handlePaymentInputChange}
-                                                    className="form-input-city"
+                                                    className="form-input-card"
                                                 />
+                                                {cvvError && <p className="bonus-error">{cvvError}</p>}
                                             </div>
                                         </div>
                                         <button
@@ -444,8 +538,8 @@ function MyFlights() {
                                                     </div>
                                                     <div className="plane-info-list">
                                                         <div className="info-section-ticket">
-                                                            <span className="label">Seat</span>
-                                                            <span className="value">{ticket.seat_number}</span>
+                                                            <span className="label"></span>
+                                                            <span className="value">{ticket.adult ? 'Adult' : 'Child'}</span>
                                                         </div>
                                                     </div>
                                                 </div>

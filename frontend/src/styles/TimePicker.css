@@ -1,0 +1,146 @@
+.time-picker-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.time-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.time-input-container:focus-within .calendar-icon,
+.time-input-container:hover .calendar-icon {
+    color: #ffdd2d;
+    opacity: 0.8;
+}
+
+.time-input {
+    width: 100%;
+    cursor: pointer !important;
+    user-select: none !important;
+    caret-color: transparent !important;
+}
+
+.time-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 1000;
+    background-color: #1f1f1f;
+    border: 2px solid #ffc42d;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    font-family: "Jost", sans-serif;
+    overflow: hidden;
+    min-width: 200px;
+}
+
+.time-picker-header {
+    background-color: #272727;
+    border-bottom: 1px solid #ffc42d;
+    padding: 12px 16px;
+    text-align: center;
+}
+
+.time-picker-title {
+    color: #ffc42d;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.time-picker-body {
+    display: flex;
+    align-items: stretch;
+    padding: 8px;
+}
+
+.time-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.time-column-header {
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #404040;
+    margin-bottom: 8px;
+}
+
+.time-scroll {
+    max-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #ffc42d #272727;
+}
+
+.time-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.time-scroll::-webkit-scrollbar-track {
+    background: #272727;
+    border-radius: 3px;
+}
+
+.time-scroll::-webkit-scrollbar-thumb {
+    background: #ffc42d;
+    border-radius: 3px;
+}
+
+.time-scroll::-webkit-scrollbar-thumb:hover {
+    background: #ffdd2d;
+}
+
+.time-item {
+    padding: 8px 12px;
+    text-align: center;
+    color: #e0e0e0;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 2px 4px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.time-item:hover {
+    background-color: #404040;
+}
+
+.time-item.selected {
+    background-color: #ffc42d;
+    color: #151515;
+    font-weight: 600;
+}
+
+.time-item.selected:hover {
+    background-color: #ffdd2d;
+}
+
+.time-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffc42d;
+    font-size: 24px;
+    font-weight: 600;
+    padding: 0 8px;
+    margin-top: 32px;
+}
+
+.calendar-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ccc;
+    font-size: 18px;
+    opacity: 0.8;
+    pointer-events: none;
+    transition: color 0.2s ease, opacity 0.2s ease;
+}

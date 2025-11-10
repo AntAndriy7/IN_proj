@@ -33,6 +33,27 @@ function App() {
         return children;
     };
 
+    function NavigateBasedOnRole() {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) return <Navigate to="/main" replace />;
+
+        try {
+            const decodedToken = jwtDecode(token);
+            switch (decodedToken.role) {
+                case "ADMIN":
+                    return <Navigate to="/admin/main" replace />;
+                case "AVIA":
+                case "AVIA-temp":
+                    return <Navigate to="/avia/main" replace />;
+                default:
+                    return <Navigate to="/main" replace />;
+            }
+        } catch (e) {
+            console.error("Invalid token", e);
+            return <Navigate to="/login" replace />;
+        }
+    }
+
     const PageWrapper = ({ children }) => (
         <motion.div
             initial={{ opacity: 0 }}
@@ -48,7 +69,10 @@ function App() {
   return (
       <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<ProtectedRoute role="private"></ProtectedRoute>} />
+              <Route
+                  path="/"
+                  element={<NavigateBasedOnRole />}
+              />
               <Route
                   path="/signup"
                   element={<PageWrapper><SignUpForm /></PageWrapper>}
