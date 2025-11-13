@@ -415,7 +415,7 @@ function MyFlights() {
                                                     >
                                                         View
                                                     </button>
-                                                    {order.payment_status === 'booked' && (
+                                                    {order.payment_status === 'booked' && order.status === true && (
                                                         <button
                                                             className="pay-button"
                                                             onClick={() => {
